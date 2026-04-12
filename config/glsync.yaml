@@ -1,0 +1,49 @@
+server:
+  port: 8090
+  read_timeout: 10s
+  write_timeout: 10s
+  shutdown_timeout: 15s
+
+database:
+  url: "postgres://glsync:glsync@localhost:5432/glsync?sslmode=disable"
+  max_connections: 20
+  min_connections: 5
+
+gitlab:
+  webhook_secret: ""
+
+jira:
+  base_url: ""
+  username: ""
+  api_token: ""
+  timeout: 15s
+
+workflow:
+  project_key: "RIS"
+  develop_branch: "develop"
+  master_branch: "master"
+  transitions:
+    code_review: "14"   # "Done Dev" -> Ready to Code Review
+    rfqa: "5"           # "Ready to QA"
+    done: ""            # TODO: fill after querying a Ready-to-QA ticket
+
+  in_progress:
+    transition_id: "2"  # To Do -> In Progress
+    # "sprint_end": due date = next sprint end day (e.g. Tuesday)
+    # "story_points": due date = today + story_points days
+    due_date_strategy: "sprint_end"
+    sprint_end_weekday: "tuesday"
+    start_date_field: "customfield_10040"   # Start date
+    due_date_field: "duedate"              # Due date
+    story_points_field: "customfield_10027" # Story Points
+
+worker:
+  concurrency: 3
+  poll_interval: 5s
+  max_attempts: 5
+
+reconcile:
+  enabled: true
+  interval: 15m
+  stuck_job_timeout: 5m
+  drift_lookback: 1h
