@@ -3,6 +3,9 @@ server:
   read_timeout: 10s
   write_timeout: 10s
   shutdown_timeout: 15s
+  # admin_token: set via GLSYNC_SERVER__ADMIN_TOKEN env var.
+  # If empty, /api/v1/admin/* routes return 404 (disabled).
+  admin_token: ""
 
 database:
   url: "postgres://glsync:glsync@localhost:5432/glsync?sslmode=disable"
@@ -25,7 +28,10 @@ workflow:
   transitions:
     code_review: "14"   # "Done Dev" -> Ready to Code Review
     rfqa: "5"           # "Ready to QA"
-    done: ""            # TODO: fill after querying a Ready-to-QA ticket
+    # done: leave empty until the Jira workflow has a transition from RFQA -> Done.
+    # To find the correct ID, call: GET <jira_base_url>/rest/api/2/issue/<any-rfqa-ticket>/transitions
+    # and look for the transition named "Done" or similar. Set GLSYNC_WORKFLOW__TRANSITIONS__DONE.
+    done: ""
 
   in_progress:
     transition_id: "2"  # To Do -> In Progress

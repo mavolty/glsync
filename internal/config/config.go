@@ -27,6 +27,7 @@ type ServerConfig struct {
 	ReadTimeout     time.Duration `koanf:"read_timeout"`
 	WriteTimeout    time.Duration `koanf:"write_timeout"`
 	ShutdownTimeout time.Duration `koanf:"shutdown_timeout"`
+	AdminToken      string        `koanf:"admin_token"`
 }
 
 type DatabaseConfig struct {
@@ -78,6 +79,28 @@ type ReconcileConfig struct {
 	DriftLookback    time.Duration `koanf:"drift_lookback"`
 }
 
+// Validate checks that all required secrets and settings are present.
+// Call this immediately after Load to fail fast before any connections are made.
+func (c *Config) Validate() error {
+	var missing []string
+	if c.GitLab.WebhookSecret == "" {
+		missing = append(missing, "GLSYNC_GITLAB__WEBHOOK_SECRET (gitlab.webhook_secret)")
+	}
+	if c.Jira.Username == "" {
+		missing = append(missing, "GLSYNC_JIRA__USERNAME (jira.username)")
+	}
+	if c.Jira.APIToken == "" {
+		missing = append(missing, "GLSYNC_JIRA__API_TOKEN (jira.api_token)")
+	}
+	if c.Database.URL == "" {
+		missing = append(missing, "GLSYNC_DATABASE__URL (database.url)")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("missing required config values: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
 // Load reads config from a YAML file, then overrides with GLSYNC_ prefixed env vars.
 func Load(path string) (*Config, error) {
 	k := koanf.New(".")
@@ -108,6 +131,9 @@ func Load(path string) (*Config, error) {
 // overrideFromEnv applies environment variable overrides directly,
 // bypassing koanf's key transformation for values that contain underscores.
 func overrideFromEnv(cfg *Config) {
+	if v := os.Getenv("GLSYNC_SERVER__ADMIN_TOKEN"); v != "" {
+		cfg.Server.AdminToken = v
+	}
 	if v := os.Getenv("GLSYNC_GITLAB__WEBHOOK_SECRET"); v != "" {
 		cfg.GitLab.WebhookSecret = v
 	}

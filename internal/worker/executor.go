@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
@@ -16,10 +17,11 @@ type Executor struct {
 	jira       jira.Transitioner
 	resolver   *workflow.Resolver
 	inProgress config.InProgressConfig
+	logger     *slog.Logger
 }
 
-func NewExecutor(jira jira.Transitioner, resolver *workflow.Resolver, inProgress config.InProgressConfig) *Executor {
-	return &Executor{jira: jira, resolver: resolver, inProgress: inProgress}
+func NewExecutor(jira jira.Transitioner, resolver *workflow.Resolver, inProgress config.InProgressConfig, logger *slog.Logger) *Executor {
+	return &Executor{jira: jira, resolver: resolver, inProgress: inProgress, logger: logger}
 }
 
 func (e *Executor) Execute(ctx context.Context, job domain.Job) error {
@@ -41,7 +43,13 @@ func (e *Executor) executeJiraTransition(ctx context.Context, job domain.Job) er
 
 	transitionID, err := e.resolver.ResolveTransitionID(job.TargetState)
 	if err != nil {
-		return fmt.Errorf("resolve transition: %w", err)
+		// Missing transition ID means the operator hasn't configured it yet.
+		// Log a warning and skip rather than burning retries on a config gap.
+		e.logger.Warn("transition not configured — skipping job",
+			"issue_key", job.IssueKey,
+			"target_state", job.TargetState,
+		)
+		return nil
 	}
 	if err := e.jira.TransitionIssue(ctx, job.IssueKey, transitionID); err != nil {
 		return fmt.Errorf("transition issue %s to %s (id %s): %w",
@@ -70,7 +78,7 @@ func (e *Executor) executeInProgressTransition(ctx context.Context, job domain.J
 	}
 
 	const dateFormat = "2006-01-02"
-	fields := map[string]interface{}{
+	fields := map[string]any{
 		cfg.StoryPointsField: storyPoints,
 		cfg.StartDateField:   today.Format(dateFormat),
 		cfg.DueDateField:     dueDate.Format(dateFormat),

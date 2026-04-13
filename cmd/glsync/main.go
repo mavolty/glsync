@@ -33,6 +33,10 @@ func main() {
 		logger.Error("load config", "error", err)
 		os.Exit(1)
 	}
+	if err := cfg.Validate(); err != nil {
+		logger.Error("invalid config", "error", err)
+		os.Exit(1)
+	}
 
 	// Root context cancelled on OS signal
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -64,7 +68,7 @@ func main() {
 	)
 
 	// Wire job executor and processor
-	exec := worker.NewExecutor(jiraClient, resolver, cfg.Workflow.InProgress)
+	exec := worker.NewExecutor(jiraClient, resolver, cfg.Workflow.InProgress, logger.With("component", "executor"))
 	proc := worker.NewProcessor(
 		jobs,
 		audit,

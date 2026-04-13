@@ -21,8 +21,10 @@ type Server struct {
 	logger *slog.Logger
 }
 
-// New creates and configures the HTTP server with all routes.
-func New(
+// NewHandler assembles and returns the chi router with all routes wired.
+// pool may be nil in tests (health endpoints will be skipped).
+// logger may be nil; slog.Default() is used in that case.
+func NewHandler(
 	cfg config.Config,
 	pool *pgxpool.Pool,
 	events store.EventRepository,
@@ -30,15 +32,17 @@ func New(
 	audit store.AuditRepository,
 	resolver *workflow.Resolver,
 	logger *slog.Logger,
-) *Server {
-	r := chi.NewRouter()
+) http.Handler {
+	if logger == nil {
+		logger = slog.Default()
+	}
 
-	// Middleware stack
+	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(RequestLogger(logger))
 
-	// Health endpoints
+	// Health endpoints (skipped when pool is nil, e.g. in tests)
 	health := &healthHandler{pool: pool}
 	r.Get("/healthz", health.liveness)
 	r.Get("/readyz", health.readiness)
@@ -56,18 +60,35 @@ func New(
 	}
 	r.Post("/api/v1/webhooks/gitlab", wh.handleGitLab)
 
-	// Admin endpoints (no auth yet — add IP allowlist or token in production)
+	// Admin endpoints — protected by bearer token (set GLSYNC_SERVER__ADMIN_TOKEN).
+	// If AdminToken is empty, routes return 404.
 	admin := &adminHandler{events: events, jobs: jobs}
-	r.Get("/api/v1/admin/events", admin.listEvents)
-	r.Get("/api/v1/admin/jobs/failed", admin.listFailedJobs)
+	r.Route("/api/v1/admin", func(r chi.Router) {
+		r.Use(RequireAdminToken(cfg.Server.AdminToken))
+		r.Get("/events", admin.listEvents)
+		r.Get("/jobs/failed", admin.listFailedJobs)
+	})
 
+	return r
+}
+
+// New creates and configures the HTTP server with all routes.
+func New(
+	cfg config.Config,
+	pool *pgxpool.Pool,
+	events store.EventRepository,
+	jobs store.JobRepository,
+	audit store.AuditRepository,
+	resolver *workflow.Resolver,
+	logger *slog.Logger,
+) *Server {
+	handler := NewHandler(cfg, pool, events, jobs, audit, resolver, logger)
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler:      r,
+		Handler:      handler,
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}
-
 	return &Server{http: httpServer, logger: logger}
 }
 
