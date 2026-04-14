@@ -1,0 +1,9 @@
+.git
+.env
+.env.*
+bin/
+*.md
+*_test.go
+Makefile
+.dockerignore
+Dockerfile

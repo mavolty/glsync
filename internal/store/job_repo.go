@@ -16,7 +16,7 @@ type JobRepository interface {
 	MarkCompleted(ctx context.Context, id string) error
 	MarkFailed(ctx context.Context, id string, errMsg string, nextRunAt time.Time) error
 	MarkDead(ctx context.Context, id string, errMsg string) error
-	ListFailed(ctx context.Context) ([]domain.Job, error)
+	ListFailed(ctx context.Context, limit int) ([]domain.Job, error)
 	ListStale(ctx context.Context, olderThan time.Duration) ([]domain.Job, error)
 	ResetStuck(ctx context.Context, olderThan time.Duration) (int64, error)
 }
@@ -128,11 +128,15 @@ func (r *pgJobRepo) MarkDead(ctx context.Context, id string, errMsg string) erro
 	return nil
 }
 
-func (r *pgJobRepo) ListFailed(ctx context.Context) ([]domain.Job, error) {
+func (r *pgJobRepo) ListFailed(ctx context.Context, limit int) ([]domain.Job, error) {
+	if limit <= 0 || limit > 1000 {
+		limit = 200
+	}
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, event_id, job_type, status, issue_key, target_state,
 		       payload, attempts, max_attempts, last_error, next_run_at, created_at, completed_at
-		FROM jobs WHERE status IN ('failed', 'dead') ORDER BY created_at DESC`)
+		FROM jobs WHERE status IN ('failed', 'dead') ORDER BY created_at DESC
+		LIMIT $1`, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list failed jobs: %w", err)
 	}

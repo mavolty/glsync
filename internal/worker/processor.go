@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"math"
 	"sync"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
+	"gitlab.surya-am.com/sam/risk/glsync/internal/integration/jira"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
 )
 
@@ -102,6 +104,17 @@ func (p *Processor) process(ctx context.Context, job domain.Job) {
 		"error":   err.Error(),
 		"attempt": job.Attempts + 1,
 	})
+
+	// Non-retryable Jira errors (400, 404, 422) — skip straight to dead
+	var jiraErr *jira.JiraHTTPError
+	if errors.As(err, &jiraErr) && jiraErr.IsNonRetryable() {
+		if markErr := p.jobs.MarkDead(ctx, job.ID, err.Error()); markErr != nil {
+			log.Error("mark job dead", "error", markErr)
+		}
+		p.writeAudit(ctx, job, "job_dead", map[string]any{"reason": "non-retryable jira error", "status_code": jiraErr.StatusCode})
+		log.Error("job dead — non-retryable jira error", "status_code", jiraErr.StatusCode)
+		return
+	}
 
 	if job.Attempts+1 >= job.MaxAttempts {
 		if markErr := p.jobs.MarkDead(ctx, job.ID, err.Error()); markErr != nil {

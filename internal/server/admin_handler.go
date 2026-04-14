@@ -30,7 +30,14 @@ func (h *adminHandler) listEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *adminHandler) listFailedJobs(w http.ResponseWriter, r *http.Request) {
-	jobs, err := h.jobs.ListFailed(r.Context())
+	limit := 200
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 1000 {
+			limit = n
+		}
+	}
+
+	jobs, err := h.jobs.ListFailed(r.Context(), limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to list jobs")
 		return

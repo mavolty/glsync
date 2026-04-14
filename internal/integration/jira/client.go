@@ -65,8 +65,8 @@ func (c *Client) TransitionIssueWithFields(ctx context.Context, issueKey, transi
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("jira transition returned %d: %s", resp.StatusCode, string(body))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
+		return &JiraHTTPError{StatusCode: resp.StatusCode, Body: string(errBody)}
 	}
 	return nil
 }
@@ -95,8 +95,8 @@ func (c *Client) UpdateIssueFields(ctx context.Context, issueKey string, fields 
 
 	// Jira returns 204 No Content on success
 	if resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("jira update fields returned %d: %s", resp.StatusCode, string(body))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
+		return &JiraHTTPError{StatusCode: resp.StatusCode, Body: string(errBody)}
 	}
 	return nil
 }
@@ -118,8 +118,8 @@ func (c *Client) GetStoryPoints(ctx context.Context, issueKey, storyPointsField 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return 0, fmt.Errorf("jira get issue returned %d: %s", resp.StatusCode, string(body))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
+		return 0, &JiraHTTPError{StatusCode: resp.StatusCode, Body: string(errBody)}
 	}
 
 	// Use a dynamic map to handle any custom field name
@@ -156,8 +156,8 @@ func (c *Client) GetIssueStatus(ctx context.Context, issueKey string) (string, e
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("jira get issue returned %d: %s", resp.StatusCode, string(body))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
+		return "", &JiraHTTPError{StatusCode: resp.StatusCode, Body: string(errBody)}
 	}
 
 	var issue IssueResponse
@@ -182,8 +182,8 @@ func (c *Client) GetTransitions(ctx context.Context, issueKey string) ([]Transit
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("jira get transitions returned %d: %s", resp.StatusCode, string(body))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
+		return nil, &JiraHTTPError{StatusCode: resp.StatusCode, Body: string(errBody)}
 	}
 
 	var result TransitionsResponse

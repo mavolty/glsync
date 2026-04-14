@@ -56,7 +56,7 @@ func (m *mockJobRepo) MarkFailed(_ context.Context, _ string, _ string, _ time.T
 	return nil
 }
 func (m *mockJobRepo) MarkDead(_ context.Context, _ string, _ string) error       { return nil }
-func (m *mockJobRepo) ListFailed(_ context.Context) ([]domain.Job, error)          { return nil, nil }
+func (m *mockJobRepo) ListFailed(_ context.Context, _ int) ([]domain.Job, error)   { return nil, nil }
 func (m *mockJobRepo) ListStale(_ context.Context, _ time.Duration) ([]domain.Job, error) {
 	return nil, nil
 }
