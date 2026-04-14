@@ -8,7 +8,9 @@ server:
   admin_token: ""
 
 database:
-  url: "postgres://glsync:glsync@localhost:5432/glsync?sslmode=disable"
+  # url: set via GLSYNC_DATABASE__URL env var (required).
+  # Example: postgres://glsync:glsync@localhost:5432/glsync?sslmode=require
+  url: ""
   max_connections: 20
   min_connections: 5
 
@@ -26,21 +28,21 @@ workflow:
   develop_branch: "develop"
   master_branch: "master"
   transitions:
-    code_review: "14"   # "Done Dev" -> Ready to Code Review
-    rfqa: "5"           # "Ready to QA"
+    code_review: "15" # "Done Dev" -> Ready to Code Review
+    rfqa: "5" # "Ready to QA"
     # done: leave empty until the Jira workflow has a transition from RFQA -> Done.
     # To find the correct ID, call: GET <jira_base_url>/rest/api/2/issue/<any-rfqa-ticket>/transitions
     # and look for the transition named "Done" or similar. Set GLSYNC_WORKFLOW__TRANSITIONS__DONE.
     done: ""
 
   in_progress:
-    transition_id: "2"  # To Do -> In Progress
+    transition_id: "2" # To Do -> In Progress
     # "sprint_end": due date = next sprint end day (e.g. Tuesday)
     # "story_points": due date = today + story_points days
     due_date_strategy: "sprint_end"
     sprint_end_weekday: "tuesday"
-    start_date_field: "customfield_10040"   # Start date
-    due_date_field: "duedate"              # Due date
+    start_date_field: "customfield_10040" # Start date
+    due_date_field: "duedate" # Due date
     story_points_field: "customfield_10027" # Story Points
 
 worker:

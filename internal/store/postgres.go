@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
@@ -17,6 +18,9 @@ func NewPool(ctx context.Context, cfg config.DatabaseConfig) (*pgxpool.Pool, err
 
 	poolCfg.MaxConns = cfg.MaxConnections
 	poolCfg.MinConns = cfg.MinConnections
+	poolCfg.MaxConnLifetime = 1 * time.Hour
+	poolCfg.MaxConnIdleTime = 30 * time.Minute
+	poolCfg.HealthCheckPeriod = 1 * time.Minute
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
@@ -47,7 +48,7 @@ func NewHandler(
 	r.Get("/healthz", health.liveness)
 	r.Get("/readyz", health.readiness)
 
-	// Webhook receiver
+	// Webhook receiver — rate-limited to prevent pool exhaustion from retry storms
 	wh := &webhookHandler{
 		gitlabCfg:   cfg.GitLab,
 		workflow:    cfg.Workflow,
@@ -58,7 +59,8 @@ func NewHandler(
 		logger:      logger,
 		maxAttempts: cfg.Worker.MaxAttempts,
 	}
-	r.Post("/api/v1/webhooks/gitlab", wh.handleGitLab)
+	r.With(httprate.LimitByIP(100, time.Minute)).
+		Post("/api/v1/webhooks/gitlab", wh.handleGitLab)
 
 	// Admin endpoints — protected by bearer token (set GLSYNC_SERVER__ADMIN_TOKEN).
 	// If AdminToken is empty, routes return 404.
@@ -84,10 +86,12 @@ func New(
 ) *Server {
 	handler := NewHandler(cfg, pool, events, jobs, audit, resolver, logger)
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler:      handler,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
+		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:           handler,
+		ReadTimeout:       cfg.Server.ReadTimeout,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      cfg.Server.WriteTimeout,
+		IdleTimeout:       60 * time.Second,
 	}
 	return &Server{http: httpServer, logger: logger}
 }

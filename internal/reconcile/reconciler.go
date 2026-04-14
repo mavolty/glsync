@@ -70,7 +70,12 @@ func (r *Reconciler) resetStuckJobs(ctx context.Context) {
 	}
 }
 
-func (r *Reconciler) writeAudit(ctx context.Context, action, issueKey string, detail map[string]any) {
+func (r *Reconciler) writeAudit(_ context.Context, action, issueKey string, detail map[string]any) {
+	// Use a detached context so audit writes complete even during shutdown,
+	// when the parent context is already cancelled.
+	auditCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	raw, _ := json.Marshal(detail)
 	entry := domain.AuditEntry{
 		ID:        uuid.NewString(),
@@ -79,7 +84,7 @@ func (r *Reconciler) writeAudit(ctx context.Context, action, issueKey string, de
 		Detail:    raw,
 		CreatedAt: time.Now(),
 	}
-	if err := r.audit.Insert(ctx, entry); err != nil {
+	if err := r.audit.Insert(auditCtx, entry); err != nil {
 		r.logger.Error("reconcile: write audit log", "action", action, "error", err)
 	}
 }

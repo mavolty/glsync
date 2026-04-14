@@ -119,7 +119,12 @@ func (p *Processor) process(ctx context.Context, job domain.Job) {
 	log.Info("job scheduled for retry", "next_run_in", next)
 }
 
-func (p *Processor) writeAudit(ctx context.Context, job domain.Job, action string, detail map[string]any) {
+func (p *Processor) writeAudit(_ context.Context, job domain.Job, action string, detail map[string]any) {
+	// Use a detached context so audit writes complete even during shutdown,
+	// when the parent context is already cancelled.
+	auditCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	raw, _ := json.Marshal(detail)
 	entry := domain.AuditEntry{
 		ID:        uuid.NewString(),
@@ -130,7 +135,7 @@ func (p *Processor) writeAudit(ctx context.Context, job domain.Job, action strin
 		Detail:    raw,
 		CreatedAt: time.Now(),
 	}
-	if err := p.audit.Insert(ctx, entry); err != nil {
+	if err := p.audit.Insert(auditCtx, entry); err != nil {
 		p.logger.Error("write audit log", "action", action, "error", err)
 	}
 }

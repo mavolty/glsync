@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
-	"time"
 
 	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/integration/jira"
@@ -99,10 +99,13 @@ func main() {
 		logger.With("component", "server"),
 	)
 
-	// Start background components
-	go proc.Run(ctx)
+	// Start background components — tracked so we can wait for them at shutdown
+	var bgWg sync.WaitGroup
+	bgWg.Add(1)
+	go func() { defer bgWg.Done(); proc.Run(ctx) }()
 	if cfg.Reconcile.Enabled {
-		go rec.Run(ctx)
+		bgWg.Add(1)
+		go func() { defer bgWg.Done(); rec.Run(ctx) }()
 	}
 
 	// Start HTTP server in background; block until signal
@@ -118,15 +121,13 @@ func main() {
 		}
 	}
 
-	// Graceful shutdown
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
-	defer cancel()
-
+	// Graceful shutdown: HTTP first, then wait for in-flight jobs to drain
 	logger.Info("shutting down http server")
 	if err := srv.Shutdown(cfg.Server.ShutdownTimeout); err != nil {
 		logger.Error("shutdown error", "error", err)
 	}
-	_ = shutdownCtx
+
+	logger.Info("waiting for background workers to finish")
+	bgWg.Wait()
 	logger.Info("shutdown complete")
-	time.Sleep(100 * time.Millisecond) // allow final log flush
 }

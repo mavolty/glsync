@@ -38,9 +38,14 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. Read body
-	body, err := io.ReadAll(io.LimitReader(r.Body, maxWebhookBodyBytes))
+	// 2. Read body — enforce size at HTTP layer to prevent silent truncation
+	r.Body = http.MaxBytesReader(w, r.Body, maxWebhookBodyBytes)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		if err.Error() == "http: request body too large" {
+			writeError(w, http.StatusRequestEntityTooLarge, "payload too large")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "failed to read body")
 		return
 	}
@@ -80,7 +85,10 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 		var probe struct {
 			Before string `json:"before"`
 		}
-		json.Unmarshal(raw, &probe)
+		if err := json.Unmarshal(raw, &probe); err != nil {
+			writeError(w, http.StatusBadRequest, "failed to parse push event")
+			return
+		}
 		isTargetBranch := event.SourceBranch == h.workflow.DevelopBranch ||
 			event.SourceBranch == h.workflow.MasterBranch
 		if !gitlab.IsNewBranch(probe.Before) && !isTargetBranch {
