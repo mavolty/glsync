@@ -1,0 +1,25 @@
+[Unit]
+Description=glsync — GitLab-to-Jira sync service
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=glsync
+Group=glsync
+EnvironmentFile=/etc/glsync/env
+ExecStart=/usr/local/bin/glsync -config /etc/glsync/glsync.yaml
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/glsync
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
