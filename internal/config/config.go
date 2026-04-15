@@ -6,77 +6,86 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/env"
-	"github.com/knadh/koanf/providers/file"
-	"github.com/knadh/koanf/v2"
+	"gopkg.in/yaml.v3"
 )
 
+// Duration is a YAML-aware time.Duration.
+// It accepts human-readable strings like "5s", "10m", "1h" in config files.
+type Duration time.Duration
+
+func (d *Duration) UnmarshalYAML(value *yaml.Node) error {
+	dur, err := time.ParseDuration(value.Value)
+	if err != nil {
+		return fmt.Errorf("invalid duration %q: %w", value.Value, err)
+	}
+	*d = Duration(dur)
+	return nil
+}
+
 type Config struct {
-	Server    ServerConfig    `koanf:"server"`
-	Database  DatabaseConfig  `koanf:"database"`
-	GitLab    GitLabConfig    `koanf:"gitlab"`
-	Jira      JiraConfig      `koanf:"jira"`
-	Workflow  WorkflowConfig  `koanf:"workflow"`
-	Worker    WorkerConfig    `koanf:"worker"`
-	Reconcile ReconcileConfig `koanf:"reconcile"`
+	Server    ServerConfig    `yaml:"server"`
+	Database  DatabaseConfig  `yaml:"database"`
+	GitLab    GitLabConfig    `yaml:"gitlab"`
+	Jira      JiraConfig      `yaml:"jira"`
+	Workflow  WorkflowConfig  `yaml:"workflow"`
+	Worker    WorkerConfig    `yaml:"worker"`
+	Reconcile ReconcileConfig `yaml:"reconcile"`
 }
 
 type ServerConfig struct {
-	Port            int           `koanf:"port"`
-	ReadTimeout     time.Duration `koanf:"read_timeout"`
-	WriteTimeout    time.Duration `koanf:"write_timeout"`
-	ShutdownTimeout time.Duration `koanf:"shutdown_timeout"`
-	AdminToken      string        `koanf:"admin_token"`
+	Port            int      `yaml:"port"`
+	ReadTimeout     Duration `yaml:"read_timeout"`
+	WriteTimeout    Duration `yaml:"write_timeout"`
+	ShutdownTimeout Duration `yaml:"shutdown_timeout"`
+	AdminToken      string   `yaml:"admin_token"`
 }
 
 type DatabaseConfig struct {
-	URL            string `koanf:"url"`
-	MaxConnections int32  `koanf:"max_connections"`
-	MinConnections int32  `koanf:"min_connections"`
+	URL            string `yaml:"url"`
+	MaxConnections int32  `yaml:"max_connections"`
+	MinConnections int32  `yaml:"min_connections"`
 }
 
 type GitLabConfig struct {
-	WebhookSecret string `koanf:"webhook_secret"`
+	WebhookSecret string `yaml:"webhook_secret"`
 }
 
 type JiraConfig struct {
-	BaseURL  string        `koanf:"base_url"`
-	Username string        `koanf:"username"`
-	APIToken string        `koanf:"api_token"`
-	Timeout  time.Duration `koanf:"timeout"`
+	BaseURL  string   `yaml:"base_url"`
+	Username string   `yaml:"username"`
+	APIToken string   `yaml:"api_token"`
+	Timeout  Duration `yaml:"timeout"`
 }
 
 type WorkflowConfig struct {
-	ProjectKey    string            `koanf:"project_key"`
-	DevelopBranch string            `koanf:"develop_branch"`
-	MasterBranch  string            `koanf:"master_branch"`
-	Transitions   map[string]string `koanf:"transitions"`
-	InProgress    InProgressConfig  `koanf:"in_progress"`
+	ProjectKey    string            `yaml:"project_key"`
+	DevelopBranch string            `yaml:"develop_branch"`
+	MasterBranch  string            `yaml:"master_branch"`
+	Transitions   map[string]string `yaml:"transitions"`
+	InProgress    InProgressConfig  `yaml:"in_progress"`
 }
 
 // InProgressConfig controls how the "In Progress" transition is executed.
 // It requires sending date fields that other transitions don't need.
 type InProgressConfig struct {
-	TransitionID      string `koanf:"transition_id"`
-	DueDateStrategy   string `koanf:"due_date_strategy"`   // "sprint_end" or "story_points"
-	SprintEndWeekday  string `koanf:"sprint_end_weekday"`  // e.g. "tuesday"
-	StartDateField    string `koanf:"start_date_field"`
-	DueDateField      string `koanf:"due_date_field"`
-	StoryPointsField  string `koanf:"story_points_field"`
+	TransitionID     string `yaml:"transition_id"`
+	DueDateStrategy  string `yaml:"due_date_strategy"`  // "sprint_end" or "story_points"
+	SprintEndWeekday string `yaml:"sprint_end_weekday"` // e.g. "tuesday"
+	StartDateField   string `yaml:"start_date_field"`
+	DueDateField     string `yaml:"due_date_field"`
+	StoryPointsField string `yaml:"story_points_field"`
 }
 
 type WorkerConfig struct {
-	Concurrency  int           `koanf:"concurrency"`
-	PollInterval time.Duration `koanf:"poll_interval"`
-	MaxAttempts  int           `koanf:"max_attempts"`
+	Concurrency  int      `yaml:"concurrency"`
+	PollInterval Duration `yaml:"poll_interval"`
+	MaxAttempts  int      `yaml:"max_attempts"`
 }
 
 type ReconcileConfig struct {
-	Enabled          bool          `koanf:"enabled"`
-	Interval         time.Duration `koanf:"interval"`
-	StuckJobTimeout  time.Duration `koanf:"stuck_job_timeout"`
-	DriftLookback    time.Duration `koanf:"drift_lookback"`
+	Enabled         bool     `yaml:"enabled"`
+	Interval        Duration `yaml:"interval"`
+	StuckJobTimeout Duration `yaml:"stuck_job_timeout"`
 }
 
 // Validate checks that all required secrets and settings are present.
@@ -101,36 +110,27 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// Load reads config from a YAML file, then overrides with GLSYNC_ prefixed env vars.
+// Load reads config from a YAML file, then applies GLSYNC_ prefixed env var overrides.
 func Load(path string) (*Config, error) {
-	k := koanf.New(".")
-
-	if err := k.Load(file.Provider(path), yaml.Parser()); err != nil {
-		return nil, fmt.Errorf("load yaml config %q: %w", path, err)
-	}
-
-	// Env vars override file values. GLSYNC_SERVER_PORT -> server.port
-	if err := k.Load(env.Provider("GLSYNC_", ".", func(s string) string {
-		return replaceEnvKey(s)
-	}), nil); err != nil {
-		return nil, fmt.Errorf("load env config: %w", err)
-	}
-
 	cfg := defaults()
-	if err := k.Unmarshal("", cfg); err != nil {
-		return nil, fmt.Errorf("unmarshal config: %w", err)
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config file %q: %w", path, err)
 	}
 
-	// Override secrets directly from env vars — koanf's env provider
-	// has difficulty mapping keys with underscores in field names.
-	overrideFromEnv(cfg)
+	if err := yaml.Unmarshal(data, cfg); err != nil {
+		return nil, fmt.Errorf("parse config file %q: %w", path, err)
+	}
 
+	applyEnv(cfg)
 	return cfg, nil
 }
 
-// overrideFromEnv applies environment variable overrides directly,
-// bypassing koanf's key transformation for values that contain underscores.
-func overrideFromEnv(cfg *Config) {
+// applyEnv overrides config values from GLSYNC_-prefixed environment variables.
+// Uses double-underscore (__) as the nesting separator to preserve single underscores
+// in field names (e.g. GLSYNC_JIRA__API_TOKEN → jira.api_token).
+func applyEnv(cfg *Config) {
 	if v := os.Getenv("GLSYNC_SERVER__ADMIN_TOKEN"); v != "" {
 		cfg.Server.AdminToken = v
 	}
@@ -155,16 +155,16 @@ func defaults() *Config {
 	return &Config{
 		Server: ServerConfig{
 			Port:            8090,
-			ReadTimeout:     10 * time.Second,
-			WriteTimeout:    10 * time.Second,
-			ShutdownTimeout: 15 * time.Second,
+			ReadTimeout:     Duration(10 * time.Second),
+			WriteTimeout:    Duration(10 * time.Second),
+			ShutdownTimeout: Duration(15 * time.Second),
 		},
 		Database: DatabaseConfig{
 			MaxConnections: 20,
-			MinConnections: 5,
+			MinConnections: 2,
 		},
 		Jira: JiraConfig{
-			Timeout: 15 * time.Second,
+			Timeout: Duration(15 * time.Second),
 		},
 		Workflow: WorkflowConfig{
 			ProjectKey:    "RIS",
@@ -174,32 +174,20 @@ func defaults() *Config {
 			InProgress: InProgressConfig{
 				DueDateStrategy:  "sprint_end",
 				SprintEndWeekday: "tuesday",
-				StartDateField:   "customfield_10236",
-				DueDateField:     "customfield_10246",
+				StartDateField:   "customfield_10040",
+				DueDateField:     "duedate",
 				StoryPointsField: "customfield_10027",
 			},
 		},
 		Worker: WorkerConfig{
-			Concurrency:  3,
-			PollInterval: 5 * time.Second,
+			Concurrency:  1,
+			PollInterval: Duration(5 * time.Second),
 			MaxAttempts:  5,
 		},
 		Reconcile: ReconcileConfig{
 			Enabled:         true,
-			Interval:        15 * time.Minute,
-			StuckJobTimeout: 5 * time.Minute,
-			DriftLookback:   1 * time.Hour,
+			Interval:        Duration(15 * time.Minute),
+			StuckJobTimeout: Duration(5 * time.Minute),
 		},
 	}
-}
-
-// replaceEnvKey converts env var names to koanf key paths.
-// Uses __ (double underscore) as the nesting separator so single underscores
-// in field names are preserved.
-// Examples:
-//   GITLAB__WEBHOOK_SECRET -> gitlab.webhook_secret
-//   SERVER__READ_TIMEOUT   -> server.read_timeout
-// The GLSYNC_ prefix is already stripped by env.Provider before this is called.
-func replaceEnvKey(s string) string {
-	return strings.ReplaceAll(strings.ToLower(s), "__", ".")
 }

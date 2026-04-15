@@ -88,9 +88,9 @@ func New(
 	httpServer := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:           handler,
-		ReadTimeout:       cfg.Server.ReadTimeout,
+		ReadTimeout:       time.Duration(cfg.Server.ReadTimeout),
 		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      cfg.Server.WriteTimeout,
+		WriteTimeout:      time.Duration(cfg.Server.WriteTimeout),
 		IdleTimeout:       60 * time.Second,
 	}
 	return &Server{http: httpServer, logger: logger}

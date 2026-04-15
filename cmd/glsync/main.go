@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/integration/jira"
@@ -64,7 +65,7 @@ func main() {
 		cfg.Jira.BaseURL,
 		cfg.Jira.Username,
 		cfg.Jira.APIToken,
-		&http.Client{Timeout: cfg.Jira.Timeout},
+		&http.Client{Timeout: time.Duration(cfg.Jira.Timeout)},
 	)
 
 	// Wire job executor and processor
@@ -75,7 +76,7 @@ func main() {
 		exec,
 		worker.ProcessorConfig{
 			Concurrency:  cfg.Worker.Concurrency,
-			PollInterval: cfg.Worker.PollInterval,
+			PollInterval: time.Duration(cfg.Worker.PollInterval),
 			MaxAttempts:  cfg.Worker.MaxAttempts,
 		},
 		logger.With("component", "worker"),
@@ -86,9 +87,8 @@ func main() {
 		jobs,
 		audit,
 		reconcile.ReconcileConfig{
-			Interval:        cfg.Reconcile.Interval,
-			StuckJobTimeout: cfg.Reconcile.StuckJobTimeout,
-			DriftLookback:   cfg.Reconcile.DriftLookback,
+			Interval:        time.Duration(cfg.Reconcile.Interval),
+			StuckJobTimeout: time.Duration(cfg.Reconcile.StuckJobTimeout),
 		},
 		logger.With("component", "reconciler"),
 	)
@@ -123,7 +123,7 @@ func main() {
 
 	// Graceful shutdown: HTTP first, then wait for in-flight jobs to drain
 	logger.Info("shutting down http server")
-	if err := srv.Shutdown(cfg.Server.ShutdownTimeout); err != nil {
+	if err := srv.Shutdown(time.Duration(cfg.Server.ShutdownTimeout)); err != nil {
 		logger.Error("shutdown error", "error", err)
 	}
 

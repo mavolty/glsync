@@ -176,27 +176,6 @@ func TestExecutor_InProgressTransition_EmptyTransitionIDSkips(t *testing.T) {
 	assert.False(t, mock.transitionWithFieldsCalled)
 }
 
-func TestExecutor_LarkBaseSyncNoOp(t *testing.T) {
-	mock := &mockTransitioner{}
-	exec := newTestExecutor(mock, nil, config.InProgressConfig{})
-
-	job := baseJob(domain.JobLarkBaseSync, "")
-	err := exec.Execute(context.Background(), job)
-
-	require.NoError(t, err)
-	assert.False(t, mock.transitionCalled)
-}
-
-func TestExecutor_FeishuNotifyNoOp(t *testing.T) {
-	mock := &mockTransitioner{}
-	exec := newTestExecutor(mock, nil, config.InProgressConfig{})
-
-	job := baseJob(domain.JobFeishuNotify, "")
-	err := exec.Execute(context.Background(), job)
-
-	require.NoError(t, err)
-	assert.False(t, mock.transitionCalled)
-}
 
 func TestExecutor_UnknownJobTypeErrors(t *testing.T) {
 	mock := &mockTransitioner{}

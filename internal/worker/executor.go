@@ -28,8 +28,6 @@ func (e *Executor) Execute(ctx context.Context, job domain.Job) error {
 	switch job.Type {
 	case domain.JobJiraTransition:
 		return e.executeJiraTransition(ctx, job)
-	case domain.JobLarkBaseSync, domain.JobFeishuNotify:
-		return nil
 	default:
 		return fmt.Errorf("unknown job type: %q", job.Type)
 	}

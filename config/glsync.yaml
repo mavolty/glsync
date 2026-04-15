@@ -12,7 +12,7 @@ database:
   # Example: postgres://glsync:glsync@localhost:5432/glsync?sslmode=require
   url: ""
   max_connections: 20
-  min_connections: 5
+  min_connections: 2
 
 gitlab:
   webhook_secret: ""
@@ -46,7 +46,7 @@ workflow:
     story_points_field: "customfield_10027" # Story Points
 
 worker:
-  concurrency: 3
+  concurrency: 1
   poll_interval: 5s
   max_attempts: 5
 
@@ -54,4 +54,3 @@ reconcile:
   enabled: true
   interval: 15m
   stuck_job_timeout: 5m
-  drift_lookback: 1h

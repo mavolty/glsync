@@ -81,9 +81,9 @@ func buildServer(events store.EventRepository, jobs store.JobRepository, secret 
 		Worker: config.WorkerConfig{MaxAttempts: 5},
 		Server: config.ServerConfig{
 			Port:            8090,
-			ReadTimeout:     5 * time.Second,
-			WriteTimeout:    5 * time.Second,
-			ShutdownTimeout: 5 * time.Second,
+			ReadTimeout:     config.Duration(5 * time.Second),
+			WriteTimeout:    config.Duration(5 * time.Second),
+			ShutdownTimeout: config.Duration(5 * time.Second),
 		},
 	}
 	resolver := workflow.NewResolver(cfg.Workflow.Transitions)

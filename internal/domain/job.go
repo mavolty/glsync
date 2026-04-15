@@ -19,8 +19,6 @@ type JobType string
 
 const (
 	JobJiraTransition JobType = "jira_transition"
-	JobLarkBaseSync   JobType = "larkbase_sync"
-	JobFeishuNotify   JobType = "feishu_notify"
 )
 
 type Job struct {

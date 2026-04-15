@@ -22,7 +22,6 @@ type Reconciler struct {
 type ReconcileConfig struct {
 	Interval        time.Duration
 	StuckJobTimeout time.Duration
-	DriftLookback   time.Duration
 }
 
 func New(
