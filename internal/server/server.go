@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
+	gitlabapi "gitlab.surya-am.com/sam/risk/glsync/internal/integration/gitlab"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/workflow"
 )
@@ -32,6 +33,7 @@ func NewHandler(
 	jobs store.JobRepository,
 	audit store.AuditRepository,
 	resolver *workflow.Resolver,
+	gitlabClient *gitlabapi.Client,
 	logger *slog.Logger,
 ) http.Handler {
 	if logger == nil {
@@ -50,14 +52,15 @@ func NewHandler(
 
 	// Webhook receiver — rate-limited to prevent pool exhaustion from retry storms
 	wh := &webhookHandler{
-		gitlabCfg:   cfg.GitLab,
-		workflow:    cfg.Workflow,
-		resolver:    resolver,
-		events:      events,
-		jobs:        jobs,
-		audit:       audit,
-		logger:      logger,
-		maxAttempts: cfg.Worker.MaxAttempts,
+		gitlabCfg:    cfg.GitLab,
+		workflow:     cfg.Workflow,
+		resolver:     resolver,
+		gitlabClient: gitlabClient,
+		events:       events,
+		jobs:         jobs,
+		audit:        audit,
+		logger:       logger,
+		maxAttempts:  cfg.Worker.MaxAttempts,
 	}
 	r.With(httprate.LimitByIP(100, time.Minute)).
 		Post("/api/v1/webhooks/gitlab", wh.handleGitLab)
@@ -82,9 +85,10 @@ func New(
 	jobs store.JobRepository,
 	audit store.AuditRepository,
 	resolver *workflow.Resolver,
+	gitlabClient *gitlabapi.Client,
 	logger *slog.Logger,
 ) *Server {
-	handler := NewHandler(cfg, pool, events, jobs, audit, resolver, logger)
+	handler := NewHandler(cfg, pool, events, jobs, audit, resolver, gitlabClient, logger)
 	httpServer := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:           handler,

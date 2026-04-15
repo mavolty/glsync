@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
+	gitlabapi "gitlab.surya-am.com/sam/risk/glsync/internal/integration/gitlab"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/integration/jira"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/reconcile"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/server"
@@ -68,6 +69,12 @@ func main() {
 		&http.Client{Timeout: time.Duration(cfg.Jira.Timeout)},
 	)
 
+	// Wire GitLab API client (for counting emoji reactions)
+	var gitlabClient *gitlabapi.Client
+	if cfg.GitLab.APIToken != "" {
+		gitlabClient = gitlabapi.NewClient(cfg.GitLab.BaseURL, cfg.GitLab.APIToken, nil)
+	}
+
 	// Wire job executor and processor
 	exec := worker.NewExecutor(jiraClient, resolver, cfg.Workflow.InProgress, logger.With("component", "executor"))
 	proc := worker.NewProcessor(
@@ -95,7 +102,7 @@ func main() {
 
 	// Wire HTTP server
 	srv := server.New(
-		*cfg, pool, events, jobs, audit, resolver,
+		*cfg, pool, events, jobs, audit, resolver, gitlabClient,
 		logger.With("component", "server"),
 	)
 
