@@ -27,6 +27,8 @@ func Parse(raw json.RawMessage) (domain.NormalizedEvent, error) {
 		return parsePush(raw)
 	case "merge_request":
 		return parseMR(raw)
+	case "emoji":
+		return parseEmoji(raw)
 	default:
 		return domain.NormalizedEvent{
 			EventType:   domain.EventUnrecognized,
@@ -105,4 +107,54 @@ func classifyMR(action string, isDraft bool) domain.EventType {
 	default:
 		return domain.EventUnrecognized
 	}
+}
+
+func parseEmoji(raw json.RawMessage) (domain.NormalizedEvent, error) {
+	var ev EmojiEvent
+	if err := json.Unmarshal(raw, &ev); err != nil {
+		return domain.NormalizedEvent{}, fmt.Errorf("parse emoji event: %w", err)
+	}
+
+	oa := ev.ObjectAttributes
+
+	// Only process award actions on merge requests
+	if oa.Action != "award" || oa.AwardableType != "MergeRequest" {
+		return domain.NormalizedEvent{
+			EventType:  domain.EventUnrecognized,
+			RawPayload: raw,
+			ReceivedAt: time.Now(),
+		}, nil
+	}
+
+	// If the payload doesn't include MR details, we still record what we have.
+	// The webhook handler will fetch MR details via the API if needed.
+	mrTitle := ""
+	mrTargetBranch := ""
+	mrSourceBranch := ""
+	mrState := ""
+	mrIID := 0
+	if ev.MergeRequest != nil {
+		mrTitle = ev.MergeRequest.Title
+		mrTargetBranch = ev.MergeRequest.TargetBranch
+		mrSourceBranch = ev.MergeRequest.SourceBranch
+		mrState = ev.MergeRequest.State
+		mrIID = ev.MergeRequest.IID
+	}
+
+	idempKey := fmt.Sprintf("emoji:%d:%s:%d", ev.Project.ID, oa.Name, oa.ID)
+
+	return domain.NormalizedEvent{
+		IdempotencyKey: idempKey,
+		EventType:      domain.EventEmojiAward,
+		SourceBranch:   mrSourceBranch,
+		TargetBranch:   mrTargetBranch,
+		MRTitle:        mrTitle,
+		MRIID:          mrIID,
+		ProjectID:      ev.Project.ID,
+		AuthorEmail:    ev.User.Email,
+		RawPayload:     raw,
+		ReceivedAt:     time.Now(),
+		EmojiName:      oa.Name,
+		MRState:        mrState,
+	}, nil
 }

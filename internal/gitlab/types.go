@@ -38,13 +38,38 @@ type Project struct {
 }
 
 type MRObjectAttributes struct {
+	IID            int    `json:"iid"`
+	Title          string `json:"title"`
+	SourceBranch   string `json:"source_branch"`
+	TargetBranch   string `json:"target_branch"`
+	State          string `json:"state"`
+	Action         string `json:"action"`           // "open", "merge", "close", "update"
+	Draft          bool   `json:"draft"`             // true if this is a draft/WIP MR
+	WorkInProgress bool   `json:"work_in_progress"` // legacy field, same as Draft
+	AuthorID       int    `json:"author_id"`
+}
+
+// EmojiEvent is the normalized representation of a GitLab emoji webhook payload.
+type EmojiEvent struct {
+	ObjectKind       string          `json:"object_kind"`
+	User             User            `json:"user"`
+	Project          Project         `json:"project"`
+	ObjectAttributes EmojiAttributes `json:"object_attributes"`
+	MergeRequest     *MRFromEmoji    `json:"merge_request"`
+}
+
+type EmojiAttributes struct {
+	ID            int    `json:"id"`
+	Name          string `json:"name"`           // "thumbsup", "rocket", etc.
+	Action        string `json:"action"`         // "award" or "revoke"
+	AwardableType string `json:"awardable_type"` // "MergeRequest" or "Note"
+	AwardableID   int    `json:"awardable_id"`
+}
+
+type MRFromEmoji struct {
 	IID          int    `json:"iid"`
 	Title        string `json:"title"`
-	SourceBranch string `json:"source_branch"`
 	TargetBranch string `json:"target_branch"`
 	State        string `json:"state"`
-	Action       string `json:"action"`    // "open", "merge", "close", "update"
-	Draft        bool   `json:"draft"`     // true if this is a draft/WIP MR
-	WorkInProgress bool `json:"work_in_progress"` // legacy field, same as Draft
-	AuthorID     int    `json:"author_id"`
+	SourceBranch string `json:"source_branch"`
 }
