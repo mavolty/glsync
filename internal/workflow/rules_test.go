@@ -51,10 +51,10 @@ func TestClassify(t *testing.T) {
 			wantProcess: true,
 		},
 		{
-			name:        "MR merged into master -> done",
+			name:        "MR merged into master -> no auto-done (emoji trigger)",
 			event:       domain.NormalizedEvent{EventType: domain.EventMRMerged, TargetBranch: "master"},
-			wantState:   domain.StateDone,
-			wantProcess: true,
+			wantState:   "",
+			wantProcess: false,
 		},
 		{
 			name:        "MR merged into other branch -> ignored",

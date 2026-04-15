@@ -51,7 +51,8 @@ func classifyMerge(event domain.NormalizedEvent, cfg RuleConfig) (domain.Workflo
 	case cfg.DevelopBranch:
 		return domain.StateRFQA, true
 	case cfg.MasterBranch:
-		return domain.StateDone, true
+		// No auto-transition — done is triggered by emoji reaction on the merged MR
+		return "", false
 	default:
 		// Merges into feature branches or other branches are ignored
 		return "", false
