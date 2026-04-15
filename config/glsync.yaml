@@ -16,6 +16,14 @@ database:
 
 gitlab:
   webhook_secret: ""
+  # base_url: Your GitLab instance root URL. Required for emoji counting API calls.
+  # Example: https://gitlab.example.com
+  # Set via GLSYNC_GITLAB__BASE_URL env var.
+  base_url: ""
+  # api_token: GitLab personal access token with read_api scope.
+  # Required for counting emoji reactions on MRs.
+  # Set via GLSYNC_GITLAB__API_TOKEN env var.
+  api_token: ""
 
 jira:
   base_url: ""
@@ -28,12 +36,13 @@ workflow:
   develop_branch: "develop"
   master_branch: "master"
   transitions:
-    code_review: "15" # "Done Dev" -> Ready to Code Review
-    rfqa: "5" # "Ready to QA"
-    # done: leave empty until the Jira workflow has a transition from RFQA -> Done.
-    # To find the correct ID, call: GET <jira_base_url>/rest/api/2/issue/<any-rfqa-ticket>/transitions
-    # and look for the transition named "Done" or similar. Set GLSYNC_WORKFLOW__TRANSITIONS__DONE.
-    done: ""
+    code_review: "14" # Start → Code Review
+    rfqa: "15"        # Code Review → RFQA
+    done: "31"        # RFQA → Done
+
+  # Emoji-based done trigger: requires N thumbsup on a merged MR targeting master
+  done_emoji: "thumbsup"
+  done_emoji_threshold: 2
 
   in_progress:
     transition_id: "2" # To Do -> In Progress

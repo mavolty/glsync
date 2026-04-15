@@ -48,6 +48,8 @@ type DatabaseConfig struct {
 
 type GitLabConfig struct {
 	WebhookSecret string `yaml:"webhook_secret"`
+	APIToken      string `yaml:"api_token"`
+	BaseURL       string `yaml:"base_url"`
 }
 
 type JiraConfig struct {
@@ -58,11 +60,13 @@ type JiraConfig struct {
 }
 
 type WorkflowConfig struct {
-	ProjectKey    string            `yaml:"project_key"`
-	DevelopBranch string            `yaml:"develop_branch"`
-	MasterBranch  string            `yaml:"master_branch"`
-	Transitions   map[string]string `yaml:"transitions"`
-	InProgress    InProgressConfig  `yaml:"in_progress"`
+	ProjectKey         string            `yaml:"project_key"`
+	DevelopBranch      string            `yaml:"develop_branch"`
+	MasterBranch       string            `yaml:"master_branch"`
+	Transitions        map[string]string `yaml:"transitions"`
+	DoneEmoji          string            `yaml:"done_emoji"`
+	DoneEmojiThreshold int               `yaml:"done_emoji_threshold"`
+	InProgress         InProgressConfig  `yaml:"in_progress"`
 }
 
 // InProgressConfig controls how the "In Progress" transition is executed.
@@ -137,6 +141,12 @@ func applyEnv(cfg *Config) {
 	if v := os.Getenv("GLSYNC_GITLAB__WEBHOOK_SECRET"); v != "" {
 		cfg.GitLab.WebhookSecret = v
 	}
+	if v := os.Getenv("GLSYNC_GITLAB__API_TOKEN"); v != "" {
+		cfg.GitLab.APIToken = v
+	}
+	if v := os.Getenv("GLSYNC_GITLAB__BASE_URL"); v != "" {
+		cfg.GitLab.BaseURL = v
+	}
 	if v := os.Getenv("GLSYNC_JIRA__BASE_URL"); v != "" {
 		cfg.Jira.BaseURL = v
 	}
@@ -167,10 +177,12 @@ func defaults() *Config {
 			Timeout: Duration(15 * time.Second),
 		},
 		Workflow: WorkflowConfig{
-			ProjectKey:    "RIS",
-			DevelopBranch: "develop",
-			MasterBranch:  "master",
-			Transitions:   map[string]string{},
+			ProjectKey:         "RIS",
+			DevelopBranch:      "develop",
+			MasterBranch:       "master",
+			Transitions:        map[string]string{},
+			DoneEmoji:          "thumbsup",
+			DoneEmojiThreshold: 2,
 			InProgress: InProgressConfig{
 				DueDateStrategy:  "sprint_end",
 				SprintEndWeekday: "tuesday",

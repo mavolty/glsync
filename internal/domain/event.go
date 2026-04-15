@@ -12,6 +12,7 @@ const (
 	EventMROpened     EventType = "mr_opened"
 	EventMRMerged     EventType = "mr_merged"
 	EventMRDraft      EventType = "mr_draft"
+	EventEmojiAward   EventType = "emoji_award"
 	EventUnrecognized EventType = "unrecognized"
 )
 
@@ -27,7 +28,9 @@ type NormalizedEvent struct {
 	MRTitle         string
 	MRIID           int
 	ProjectID       int
-	AuthorEmail    string
-	RawPayload     json.RawMessage
+	AuthorEmail     string
+	RawPayload      json.RawMessage
 	ReceivedAt      time.Time
+	EmojiName       string // e.g. "thumbsup" — set for emoji events
+	MRState         string // e.g. "merged" — set for emoji events
 }
