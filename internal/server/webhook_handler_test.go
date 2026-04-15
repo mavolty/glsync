@@ -73,10 +73,12 @@ func buildServer(events store.EventRepository, jobs store.JobRepository, secret 
 	cfg := config.Config{
 		GitLab: config.GitLabConfig{WebhookSecret: secret},
 		Workflow: config.WorkflowConfig{
-			ProjectKey:    "RIS",
-			DevelopBranch: "develop",
-			MasterBranch:  "master",
-			Transitions:   map[string]string{"code_review": "14", "rfqa": "5"},
+			ProjectKey:         "RIS",
+			DevelopBranch:      "develop",
+			MasterBranch:       "master",
+			Transitions:        map[string]string{"code_review": "14", "rfqa": "15", "done": "31"},
+			DoneEmoji:          "thumbsup",
+			DoneEmojiThreshold: 2,
 		},
 		Worker: config.WorkerConfig{MaxAttempts: 5},
 		Server: config.ServerConfig{
@@ -87,7 +89,7 @@ func buildServer(events store.EventRepository, jobs store.JobRepository, secret 
 		},
 	}
 	resolver := workflow.NewResolver(cfg.Workflow.Transitions)
-	return server.NewHandler(cfg, nil, events, jobs, &mockAuditRepo{}, resolver, nil)
+	return server.NewHandler(cfg, nil, events, jobs, &mockAuditRepo{}, resolver, nil, nil)
 }
 
 // newMRPayload builds a minimal merge_request webhook payload.

@@ -29,6 +29,8 @@ func TestLoad_DefaultsApplied(t *testing.T) {
 	assert.Equal(t, 5, cfg.Worker.MaxAttempts)
 	assert.Equal(t, int32(2), cfg.Database.MinConnections)
 	assert.Equal(t, 15*time.Minute, time.Duration(cfg.Reconcile.Interval))
+	assert.Equal(t, "thumbsup", cfg.Workflow.DoneEmoji)
+	assert.Equal(t, 2, cfg.Workflow.DoneEmojiThreshold)
 }
 
 func TestLoad_YAMLOverridesDefaults(t *testing.T) {
@@ -72,6 +74,7 @@ gitlab:
   webhook_secret: "from-yaml"
 `)
 	t.Setenv("GLSYNC_GITLAB__WEBHOOK_SECRET", "from-env")
+	t.Setenv("GLSYNC_GITLAB__API_TOKEN", "gl-api-token")
 	t.Setenv("GLSYNC_JIRA__USERNAME", "jirauser")
 	t.Setenv("GLSYNC_JIRA__API_TOKEN", "jiratoken")
 	t.Setenv("GLSYNC_DATABASE__URL", "postgres://localhost/test")
@@ -80,6 +83,7 @@ gitlab:
 	require.NoError(t, err)
 
 	assert.Equal(t, "from-env", cfg.GitLab.WebhookSecret)
+	assert.Equal(t, "gl-api-token", cfg.GitLab.APIToken)
 	assert.Equal(t, "jirauser", cfg.Jira.Username)
 	assert.Equal(t, "jiratoken", cfg.Jira.APIToken)
 	assert.Equal(t, "postgres://localhost/test", cfg.Database.URL)
