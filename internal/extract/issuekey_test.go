@@ -82,3 +82,37 @@ func TestIssueKeysFromBranchAndTitle(t *testing.T) {
 		assert.Empty(t, got)
 	})
 }
+
+func TestIssueKeysFromEvent(t *testing.T) {
+	t.Run("branch takes priority", func(t *testing.T) {
+		got := extract.IssueKeysFromEvent("RIS", "RIS-100-branch", "RIS-200 in title", []string{"RIS-300 in commit"})
+		assert.Equal(t, []string{"RIS-100"}, got)
+	})
+
+	t.Run("title used when branch has no key", func(t *testing.T) {
+		got := extract.IssueKeysFromEvent("RIS", "no-key", "RIS-200 in title", []string{"RIS-300 in commit"})
+		assert.Equal(t, []string{"RIS-200"}, got)
+	})
+
+	t.Run("commit messages used when branch and title have no keys", func(t *testing.T) {
+		got := extract.IssueKeysFromEvent("RIS", "develop", "",
+			[]string{"RIS-123: fix null pointer", "minor refactor"})
+		assert.Equal(t, []string{"RIS-123"}, got)
+	})
+
+	t.Run("multiple keys across commits are deduplicated", func(t *testing.T) {
+		got := extract.IssueKeysFromEvent("RIS", "develop", "",
+			[]string{"RIS-100: first fix", "RIS-200: second fix", "RIS-100 again"})
+		assert.Equal(t, []string{"RIS-100", "RIS-200"}, got)
+	})
+
+	t.Run("returns empty when nothing has keys", func(t *testing.T) {
+		got := extract.IssueKeysFromEvent("RIS", "develop", "", []string{"minor refactor", "typo fix"})
+		assert.Equal(t, []string{}, got)
+	})
+
+	t.Run("returns empty with nil commit messages", func(t *testing.T) {
+		got := extract.IssueKeysFromEvent("RIS", "develop", "", nil)
+		assert.Equal(t, []string{}, got)
+	})
+}

@@ -33,3 +33,20 @@ func IssueKeysFromBranchAndTitle(projectKey, branch, title string) []string {
 	}
 	return IssueKeys(projectKey, title)
 }
+
+// IssueKeysFromEvent extracts issue keys with a 3-level fallback:
+//  1. Branch name (most reliable — machine-generated)
+//  2. MR title (free-form but intentional)
+//  3. Commit messages (for direct pushes to develop/master without an MR)
+func IssueKeysFromEvent(projectKey, branch, title string, commitMessages []string) []string {
+	if keys := IssueKeys(projectKey, branch); len(keys) > 0 {
+		return keys
+	}
+	if keys := IssueKeys(projectKey, title); len(keys) > 0 {
+		return keys
+	}
+	if len(commitMessages) > 0 {
+		return IssueKeys(projectKey, strings.Join(commitMessages, " "))
+	}
+	return []string{}
+}
