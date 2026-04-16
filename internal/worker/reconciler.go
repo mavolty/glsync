@@ -71,7 +71,11 @@ func (r *Reconciler) writeAudit(action, issueKey string, detail map[string]any) 
 	auditCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	raw, _ := json.Marshal(detail)
+	raw, err := json.Marshal(detail)
+	if err != nil {
+		r.logger.Error("reconcile: marshal audit detail", "error", err)
+		return
+	}
 	entry := domain.AuditEntry{
 		ID:        uuid.NewString(),
 		Action:    action,

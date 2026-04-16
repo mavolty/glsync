@@ -3,13 +3,26 @@ package gitlab
 import (
 	"regexp"
 	"strings"
+	"sync"
 )
+
+// issueKeyPatterns caches compiled regexes by project key — compiled once per unique key.
+var issueKeyPatterns sync.Map
+
+func compiledIssueKeyPattern(projectKey string) *regexp.Regexp {
+	if v, ok := issueKeyPatterns.Load(projectKey); ok {
+		return v.(*regexp.Regexp)
+	}
+	p := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(projectKey) + `-(\d+)\b`)
+	issueKeyPatterns.Store(projectKey, p)
+	return p
+}
 
 // IssueKeys extracts Jira issue keys matching the given project key prefix from text.
 // It deduplicates results while preserving order of first occurrence.
 // Returns an empty slice (never nil) when no keys are found.
 func IssueKeys(projectKey, text string) []string {
-	pattern := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(projectKey) + `-(\d+)\b`)
+	pattern := compiledIssueKeyPattern(projectKey)
 	matches := pattern.FindAllString(text, -1)
 
 	seen := make(map[string]bool, len(matches))
