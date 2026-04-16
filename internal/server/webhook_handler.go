@@ -12,7 +12,6 @@ import (
 	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/extract"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/gitlab"
-	gitlabapi "gitlab.surya-am.com/sam/risk/glsync/internal/integration/gitlab"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/worker"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/workflow"
@@ -21,15 +20,14 @@ import (
 const maxWebhookBodyBytes = 5 * 1024 * 1024 // 5 MB
 
 type webhookHandler struct {
-	gitlabCfg    config.GitLabConfig
-	workflow     config.WorkflowConfig
-	resolver     *workflow.Resolver
-	gitlabClient *gitlabapi.Client
-	events       store.EventRepository
-	jobs         store.JobRepository
-	audit        store.AuditRepository
-	logger       *slog.Logger
-	maxAttempts  int
+	gitlabCfg   config.GitLabConfig
+	workflow    config.WorkflowConfig
+	resolver    *workflow.Resolver
+	events      store.EventRepository
+	jobs        store.JobRepository
+	audit       store.AuditRepository
+	logger      *slog.Logger
+	maxAttempts int
 }
 
 func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +59,8 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "failed to parse event")
 		return
 	}
+
+	h.logger.Debug("parsed event", "event_type", event.EventType, "idempotency_key", event.IdempotencyKey)
 
 	// 4. Silently accept unrecognized events
 	if event.EventType == "unrecognized" {
@@ -99,13 +99,21 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 7. Extract issue keys
-	event.IssueKeys = extract.IssueKeysFromBranchAndTitle(
-		h.workflow.ProjectKey, event.SourceBranch, event.MRTitle,
+	// 7. Extract issue keys (branch → title → commit messages)
+	event.IssueKeys = extract.IssueKeysFromEvent(
+		h.workflow.ProjectKey, event.SourceBranch, event.MRTitle, event.CommitMessages,
 	)
 
 	// --- Emoji event: separate handling path ---
 	if event.EventType == domain.EventEmojiAward {
+		h.logger.Debug("emoji event received",
+			"emoji_name", event.EmojiName,
+			"mr_state", event.MRState,
+			"target_branch", event.TargetBranch,
+			"mr_title", event.MRTitle,
+			"mr_iid", event.MRIID,
+			"issue_keys", event.IssueKeys,
+		)
 		h.handleEmojiAward(w, r, event)
 		return
 	}
@@ -116,6 +124,7 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 		MasterBranch:  h.workflow.MasterBranch,
 	}
 	targetState, shouldProcess := workflow.Classify(event, rulesCfg)
+	h.logger.Debug("classifying event", "event_type", event.EventType, "source_branch", event.SourceBranch, "target_branch", event.TargetBranch, "target_state", targetState, "should_process", shouldProcess, "issue_keys", event.IssueKeys)
 	if !shouldProcess || len(event.IssueKeys) == 0 {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored", "reason": "no_action"})
 		return
@@ -130,6 +139,8 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.logger.Debug("event classified and persisted", "event_id", event.ID, "target_state", targetState)
+
 	// 10. Enqueue one job per issue key
 	for _, key := range event.IssueKeys {
 		job := worker.NewJob(event.ID, key, targetState, h.maxAttempts)
@@ -138,6 +149,8 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 			// Continue with other keys rather than failing the whole request
 		}
 	}
+
+	h.logger.Debug("jobs enqueued for event", "event_id", event.ID, "issue_keys", event.IssueKeys, "target_state", targetState)
 
 	h.logger.Info("event accepted",
 		"event_id", event.ID,
@@ -155,9 +168,7 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleEmojiAward processes emoji award events on merge requests.
-// When the emoji matches the configured done_emoji and the MR is merged
-// to the master branch, it counts total awards via the GitLab API.
-// If the count meets the threshold, it enqueues a "done" transition job.
+// When the emoji matches the configured done_emoji, it enqueues a "done" transition job immediately.
 func (h *webhookHandler) handleEmojiAward(w http.ResponseWriter, r *http.Request, event domain.NormalizedEvent) {
 	// 1. Check emoji name matches configured trigger
 	if event.EmojiName != h.workflow.DoneEmoji {
@@ -165,51 +176,13 @@ func (h *webhookHandler) handleEmojiAward(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// 2. Check MR is merged and targets master
-	if event.MRState != "merged" {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored", "reason": "mr_not_merged"})
-		return
-	}
-	if event.TargetBranch != h.workflow.MasterBranch {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored", "reason": "not_master"})
-		return
-	}
-
-	// 3. Must have issue keys extracted from MR title
+	// 2. Must have issue keys extracted from branch or title
 	if len(event.IssueKeys) == 0 {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored", "reason": "no_issue_keys"})
 		return
 	}
 
-	// 4. Count thumbsups via GitLab API
-	if h.gitlabClient == nil {
-		h.logger.Error("gitlab api client not configured, cannot count emoji")
-		writeError(w, http.StatusInternalServerError, "gitlab api not configured")
-		return
-	}
-
-	count, err := h.gitlabClient.CountAwardEmoji(r.Context(), event.ProjectID, event.MRIID, h.workflow.DoneEmoji)
-	if err != nil {
-		h.logger.Error("count award emoji", "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to count emoji")
-		return
-	}
-
-	threshold := h.workflow.DoneEmojiThreshold
-	if threshold <= 0 {
-		threshold = 2
-	}
-
-	if count < threshold {
-		writeJSON(w, http.StatusOK, map[string]any{
-			"status": "waiting",
-			"count":  count,
-			"needed": threshold,
-		})
-		return
-	}
-
-	// 5. Threshold met — persist event and enqueue done jobs
+	// 3. Persist event and enqueue done jobs
 	event.ID = uuid.NewString()
 	event.ReceivedAt = time.Now()
 	if err := h.events.Insert(r.Context(), event); err != nil {
@@ -225,10 +198,9 @@ func (h *webhookHandler) handleEmojiAward(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	h.logger.Info("emoji threshold met, enqueuing done",
+	h.logger.Info("emoji trigger accepted, enqueuing done",
 		"event_id", event.ID,
 		"issue_keys", event.IssueKeys,
-		"emoji_count", count,
 	)
 
 	writeJSON(w, http.StatusAccepted, map[string]any{
@@ -236,6 +208,5 @@ func (h *webhookHandler) handleEmojiAward(w http.ResponseWriter, r *http.Request
 		"event_id":     event.ID,
 		"issue_keys":   event.IssueKeys,
 		"target_state": "done",
-		"emoji_count":  count,
 	})
 }

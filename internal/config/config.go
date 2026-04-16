@@ -65,7 +65,6 @@ type WorkflowConfig struct {
 	MasterBranch       string            `yaml:"master_branch"`
 	Transitions        map[string]string `yaml:"transitions"`
 	DoneEmoji          string            `yaml:"done_emoji"`
-	DoneEmojiThreshold int               `yaml:"done_emoji_threshold"`
 	InProgress         InProgressConfig  `yaml:"in_progress"`
 }
 
@@ -182,7 +181,6 @@ func defaults() *Config {
 			MasterBranch:       "master",
 			Transitions:        map[string]string{},
 			DoneEmoji:          "thumbsup",
-			DoneEmojiThreshold: 2,
 			InProgress: InProgressConfig{
 				DueDateStrategy:  "sprint_end",
 				SprintEndWeekday: "tuesday",

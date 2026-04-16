@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -78,8 +79,7 @@ func buildServer(events store.EventRepository, jobs store.JobRepository, secret 
 			MasterBranch:       "master",
 			Transitions:        map[string]string{"code_review": "14", "rfqa": "15", "done": "31"},
 			DoneEmoji:          "thumbsup",
-			DoneEmojiThreshold: 2,
-		},
+					},
 		Worker: config.WorkerConfig{MaxAttempts: 5},
 		Server: config.ServerConfig{
 			Port:            8090,
@@ -89,7 +89,7 @@ func buildServer(events store.EventRepository, jobs store.JobRepository, secret 
 		},
 	}
 	resolver := workflow.NewResolver(cfg.Workflow.Transitions)
-	return server.NewHandler(cfg, nil, events, jobs, &mockAuditRepo{}, resolver, nil, nil)
+	return server.NewHandler(cfg, nil, events, jobs, &mockAuditRepo{}, resolver, nil)
 }
 
 // newMRPayload builds a minimal merge_request webhook payload.
@@ -113,13 +113,23 @@ func newMRPayload(action, sourceBranch, targetBranch, title string, draft bool) 
 }
 
 // newPushPayload builds a push webhook payload.
-func newPushPayload(branch, before string) []byte {
+// commits is optional — each entry becomes a commit with that message.
+func newPushPayload(branch, before string, commits ...string) []byte {
+	var commitList []map[string]any
+	for i, msg := range commits {
+		commitList = append(commitList, map[string]any{
+			"id":      fmt.Sprintf("sha%d", i),
+			"message": msg,
+			"author":  map[string]any{"email": "dev@example.com"},
+		})
+	}
 	payload := map[string]any{
 		"object_kind": "push",
 		"user_email":  "dev@example.com",
 		"project_id":  42,
 		"ref":         "refs/heads/" + branch,
 		"before":      before,
+		"commits":     commitList,
 	}
 	b, _ := json.Marshal(payload)
 	return b
@@ -242,4 +252,27 @@ func TestWebhook_UnrecognizedEvent_Returns200Ignored(t *testing.T) {
 	var resp map[string]string
 	json.NewDecoder(rr.Body).Decode(&resp)
 	assert.Equal(t, "ignored", resp["status"])
+}
+
+func TestWebhook_PushToDevelop_WithCommitKeys_Returns202RFQA(t *testing.T) {
+	events := &mockEventRepo{}
+	jobs := &mockJobRepo{}
+	handler := buildServer(events, jobs, "secret")
+
+	// Simulate: local merge of RIS-500 branch into develop, then push
+	body := newPushPayload("develop", "abc123def456abc123def456abc123def456abc1",
+		"Merge branch 'RIS-500-fix-bug' into develop",
+		"RIS-500: fix null pointer in executor",
+	)
+
+	rr := postWebhook(t, handler, body, "secret")
+
+	require.Equal(t, http.StatusAccepted, rr.Code)
+	var resp map[string]any
+	json.NewDecoder(rr.Body).Decode(&resp)
+	assert.Equal(t, "accepted", resp["status"])
+	assert.Equal(t, "rfqa", resp["target_state"])
+	assert.Equal(t, 1, jobs.enqueueCount)
+	require.NotNil(t, events.insertedEvent)
+	assert.Contains(t, events.insertedEvent.IssueKeys, "RIS-500")
 }

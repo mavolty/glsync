@@ -30,7 +30,6 @@ func TestLoad_DefaultsApplied(t *testing.T) {
 	assert.Equal(t, int32(2), cfg.Database.MinConnections)
 	assert.Equal(t, 15*time.Minute, time.Duration(cfg.Reconcile.Interval))
 	assert.Equal(t, "thumbsup", cfg.Workflow.DoneEmoji)
-	assert.Equal(t, 2, cfg.Workflow.DoneEmojiThreshold)
 }
 
 func TestLoad_YAMLOverridesDefaults(t *testing.T) {
