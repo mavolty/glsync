@@ -37,12 +37,11 @@ workflow:
   master_branch: "master"
   transitions:
     code_review: "14" # Start → Code Review
-    rfqa: "15"        # Code Review → RFQA
-    done: "31"        # RFQA → Done
+    rfqa: "15" # Code Review → RFQA
+    done: "17" # RFQA → Done
 
   # Emoji-based done trigger: requires N thumbsup on a merged MR targeting master
   done_emoji: "thumbsup"
-  done_emoji_threshold: 2
 
   in_progress:
     transition_id: "2" # To Do -> In Progress
