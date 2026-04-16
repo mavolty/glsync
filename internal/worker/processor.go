@@ -155,7 +155,12 @@ func (p *Processor) writeAudit(_ context.Context, job domain.Job, action string,
 
 // nextBackoff calculates the delay before the next retry attempt.
 // Formula: min(2^attempts * baseBackoff, maxBackoff)
+// Clamps the exponent to avoid int64 overflow in time.Duration arithmetic.
 func nextBackoff(attempts int) time.Duration {
+	const maxExp = 20 // 2^20 * 30s >> 30min; safe upper bound before overflow
+	if attempts > maxExp {
+		return maxBackoff
+	}
 	factor := math.Pow(2, float64(attempts))
 	d := time.Duration(factor) * baseBackoff
 	if d > maxBackoff {
