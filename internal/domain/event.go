@@ -31,6 +31,7 @@ type NormalizedEvent struct {
 	AuthorEmail     string
 	RawPayload      json.RawMessage
 	ReceivedAt      time.Time
-	EmojiName       string // e.g. "thumbsup" — set for emoji events
-	MRState         string // e.g. "merged" — set for emoji events
+	CommitMessages  []string // commit messages from push events — used for issue key extraction
+	EmojiName       string   // e.g. "thumbsup" — set for emoji events
+	MRState         string   // e.g. "merged" — set for emoji events
 }
