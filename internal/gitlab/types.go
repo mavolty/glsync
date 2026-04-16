@@ -52,6 +52,7 @@ type MRObjectAttributes struct {
 // EmojiEvent is the normalized representation of a GitLab emoji webhook payload.
 type EmojiEvent struct {
 	ObjectKind       string          `json:"object_kind"`
+	EventType        string          `json:"event_type"`        // "award" or "revoke" (top-level in GitLab CE)
 	User             User            `json:"user"`
 	Project          Project         `json:"project"`
 	ObjectAttributes EmojiAttributes `json:"object_attributes"`
@@ -61,7 +62,6 @@ type EmojiEvent struct {
 type EmojiAttributes struct {
 	ID            int    `json:"id"`
 	Name          string `json:"name"`           // "thumbsup", "rocket", etc.
-	Action        string `json:"action"`         // "award" or "revoke"
 	AwardableType string `json:"awardable_type"` // "MergeRequest" or "Note"
 	AwardableID   int    `json:"awardable_id"`
 }

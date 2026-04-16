@@ -53,9 +53,19 @@ func parsePush(raw json.RawMessage) (domain.NormalizedEvent, error) {
 		SourceBranch:   branch,
 		ProjectID:      ev.ProjectID,
 		AuthorEmail:    ev.UserEmail,
+		CommitMessages: commitMessages(ev.Commits),
 		RawPayload:     raw,
 		ReceivedAt:     time.Now(),
 	}, nil
+}
+
+// commitMessages extracts the message strings from a slice of commits.
+func commitMessages(commits []Commit) []string {
+	msgs := make([]string, len(commits))
+	for i, c := range commits {
+		msgs[i] = c.Message
+	}
+	return msgs
 }
 
 // IsNewBranch returns true when the push event represents a newly created branch.
@@ -118,7 +128,7 @@ func parseEmoji(raw json.RawMessage) (domain.NormalizedEvent, error) {
 	oa := ev.ObjectAttributes
 
 	// Only process award actions on merge requests
-	if oa.Action != "award" || oa.AwardableType != "MergeRequest" {
+	if ev.EventType != "award" || oa.AwardableType != "MergeRequest" {
 		return domain.NormalizedEvent{
 			EventType:  domain.EventUnrecognized,
 			RawPayload: raw,

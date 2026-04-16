@@ -13,12 +13,12 @@ import (
 func TestParse_EmojiAwardOnMR(t *testing.T) {
 	payload := map[string]any{
 		"object_kind": "emoji",
+		"event_type":  "award",
 		"user":        map[string]any{"email": "dev@example.com"},
 		"project":     map[string]any{"id": 42},
 		"object_attributes": map[string]any{
 			"id":             99,
 			"name":           "thumbsup",
-			"action":         "award",
 			"awardable_type": "MergeRequest",
 			"awardable_id":   123,
 		},
@@ -49,12 +49,12 @@ func TestParse_EmojiAwardOnMR(t *testing.T) {
 func TestParse_EmojiRevoke_Ignored(t *testing.T) {
 	payload := map[string]any{
 		"object_kind": "emoji",
+		"event_type":  "revoke",
 		"user":        map[string]any{"email": "dev@example.com"},
 		"project":     map[string]any{"id": 42},
 		"object_attributes": map[string]any{
 			"id":             99,
 			"name":           "thumbsup",
-			"action":         "revoke",
 			"awardable_type": "MergeRequest",
 			"awardable_id":   123,
 		},
@@ -70,12 +70,12 @@ func TestParse_EmojiRevoke_Ignored(t *testing.T) {
 func TestParse_EmojiOnNote_Ignored(t *testing.T) {
 	payload := map[string]any{
 		"object_kind": "emoji",
+		"event_type":  "award",
 		"user":        map[string]any{"email": "dev@example.com"},
 		"project":     map[string]any{"id": 42},
 		"object_attributes": map[string]any{
 			"id":             99,
 			"name":           "thumbsup",
-			"action":         "award",
 			"awardable_type": "Note",
 			"awardable_id":   456,
 		},
@@ -91,12 +91,12 @@ func TestParse_EmojiOnNote_Ignored(t *testing.T) {
 func TestParse_EmojiWithoutMRDetails(t *testing.T) {
 	payload := map[string]any{
 		"object_kind": "emoji",
+		"event_type":  "award",
 		"user":        map[string]any{"email": "dev@example.com"},
 		"project":     map[string]any{"id": 42},
 		"object_attributes": map[string]any{
 			"id":             100,
 			"name":           "rocket",
-			"action":         "award",
 			"awardable_type": "MergeRequest",
 			"awardable_id":   200,
 		},
