@@ -13,7 +13,6 @@ import (
 
 	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/integration/jira"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/reconcile"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/server"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/worker"
@@ -87,10 +86,10 @@ func main() {
 	)
 
 	// Wire reconciler
-	rec := reconcile.New(
+	rec := worker.NewReconciler(
 		jobs,
 		audit,
-		reconcile.ReconcileConfig{
+		worker.ReconcileConfig{
 			Interval:        time.Duration(cfg.Reconcile.Interval),
 			StuckJobTimeout: time.Duration(cfg.Reconcile.StuckJobTimeout),
 		},

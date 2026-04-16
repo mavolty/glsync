@@ -1,4 +1,4 @@
-package reconcile
+package worker
 
 import (
 	"context"
@@ -24,7 +24,7 @@ type ReconcileConfig struct {
 	StuckJobTimeout time.Duration
 }
 
-func New(
+func NewReconciler(
 	jobs store.JobRepository,
 	audit store.AuditRepository,
 	cfg ReconcileConfig,
@@ -48,13 +48,9 @@ func (r *Reconciler) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			r.runOnce(ctx)
+			r.resetStuckJobs(ctx)
 		}
 	}
-}
-
-func (r *Reconciler) runOnce(ctx context.Context) {
-	r.resetStuckJobs(ctx)
 }
 
 func (r *Reconciler) resetStuckJobs(ctx context.Context) {
@@ -65,11 +61,11 @@ func (r *Reconciler) resetStuckJobs(ctx context.Context) {
 	}
 	if count > 0 {
 		r.logger.Warn("reconcile: reset stuck jobs", "count", count)
-		r.writeAudit(ctx, "reconcile_stuck_reset", "", map[string]any{"count": count})
+		r.writeAudit("reconcile_stuck_reset", "", map[string]any{"count": count})
 	}
 }
 
-func (r *Reconciler) writeAudit(_ context.Context, action, issueKey string, detail map[string]any) {
+func (r *Reconciler) writeAudit(action, issueKey string, detail map[string]any) {
 	// Use a detached context so audit writes complete even during shutdown,
 	// when the parent context is already cancelled.
 	auditCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

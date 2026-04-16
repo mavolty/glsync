@@ -55,23 +55,10 @@ graph TD
     C --> L["reconcile"]
     C --> M["integration"]
     M --> N["jira"]
-    M --> O["larkbase"]
-    M --> P["feishu"]
-    A --> Q["migrations"]
-
-    click B "./cmd/glsync/CLAUDE.md" "Entry point"
-    click D "./internal/config/CLAUDE.md" "Configuration"
-    click E "./internal/domain/CLAUDE.md" "Domain types"
-    click F "./internal/gitlab/CLAUDE.md" "GitLab webhook parsing"
-    click G "./internal/extract/CLAUDE.md" "Issue key extraction"
-    click H "./internal/workflow/CLAUDE.md" "Workflow rules & due-date"
-    click I "./internal/store/CLAUDE.md" "PostgreSQL repositories"
-    click J "./internal/server/CLAUDE.md" "HTTP server & handlers"
-    click K "./internal/worker/CLAUDE.md" "Job processor & executor"
-    click L "./internal/reconcile/CLAUDE.md" "Stuck-job reconciler"
-    click N "./internal/integration/jira/CLAUDE.md" "Jira REST API client"
-    click O "./internal/integration/larkbase/CLAUDE.md" "Lark Base stub"
-    click P "./internal/integration/feishu/CLAUDE.md" "Feishu stub"
+    M --> O["gitlab"]
+    M --> P["larkbase"]
+    M --> Q["feishu"]
+    A --> R["migrations"]
 ```
 
 ---
@@ -83,7 +70,7 @@ graph TD
 | `cmd/glsync` | Binary entry point — wires all components and starts the server |
 | `internal/config` | Layered config loader (YAML + env vars via koanf) |
 | `internal/domain` | Pure value types: `NormalizedEvent`, `Job`, `AuditEntry`, `WorkflowState` |
-| `internal/gitlab` | Webhook token validation, payload parsing (push / MR), idempotency key construction |
+| `internal/gitlab` | Webhook token validation, payload parsing (push / MR / emoji), idempotency key construction |
 | `internal/extract` | Regex-based Jira issue key extractor from branch names and MR titles |
 | `internal/workflow` | Classify event → target state; resolve state → Jira transition ID; calculate due dates |
 | `internal/store` | pgx/v5 repository implementations for events, jobs, and audit logs |
@@ -91,6 +78,7 @@ graph TD
 | `internal/worker` | Concurrent job processor (poll + semaphore), executor that calls Jira |
 | `internal/reconcile` | Background loop that resets stuck `running` jobs back to `pending` |
 | `internal/integration/jira` | Jira REST API v2 client: `TransitionIssue`, `GetStoryPoints`, etc. |
+| `internal/integration/gitlab` | GitLab REST API v4 client: `CountAwardEmoji` (optional, not used in current emoji flow) |
 | `internal/integration/larkbase` | Stub: deployment-record interface + no-op implementation |
 | `internal/integration/feishu` | Stub: group-notification interface + no-op implementation |
 | `migrations` | golang-migrate SQL files for `events`, `jobs`, `audit_logs` tables |
@@ -107,7 +95,7 @@ graph TD
 | `GET` | `/api/v1/admin/events?limit=N` | List recent events (default 50, max 500) |
 | `GET` | `/api/v1/admin/jobs/failed` | List failed and dead jobs |
 
-> Admin endpoints have no authentication yet. Add an IP allowlist or token before exposing externally.
+> Admin endpoints require bearer token auth (`GLSYNC_SERVER__ADMIN_TOKEN`). Returns 404 if token is empty.
 
 ---
 
@@ -119,6 +107,7 @@ graph TD
 | MR opened / reopened / update (non-draft) | — | `code_review` |
 | MR merged | target branch = `develop` | `rfqa` |
 | MR merged | target branch = `master` | `done` |
+| Emoji award (`object_kind: emoji`) | `thumbsup` on MR with issue key | `done` |
 | MR draft / unrecognised | — | ignored |
 
 ---
@@ -150,11 +139,28 @@ make docker-build
 
 Default port: **8090**. Config file: `config/glsync.yaml`.
 
+### Make Targets
+
+| Command | Description |
+|---------|-------------|
+| `make build` | Compile binary to `bin/glsync` |
+| `make run` | Build + run with config file |
+| `make test` | Run all tests with race detector |
+| `make lint` | Run `golangci-lint` |
+| `make migrate-up` | Apply pending migrations |
+| `make migrate-down` | Rollback last migration |
+| `make migrate-status` | Show current migration version |
+| `make dev-db` | Start local PostgreSQL 16 via Docker |
+| `make docker-build` | Build Docker image |
+| `make tidy` | Run `go mod tidy` |
+
 ### Environment Variables (override YAML)
 
 | Variable | YAML key | Required | Example |
 |---|---|---|---|
 | `GLSYNC_GITLAB__WEBHOOK_SECRET` | `gitlab.webhook_secret` | **YES** | `s3cr3t` |
+| `GLSYNC_GITLAB__BASE_URL` | `gitlab.base_url` | no | `https://gitlab.example.com` |
+| `GLSYNC_GITLAB__API_TOKEN` | `gitlab.api_token` | no | `glpat-…` |
 | `GLSYNC_JIRA__USERNAME` | `jira.username` | **YES** | `user@corp.com` |
 | `GLSYNC_JIRA__API_TOKEN` | `jira.api_token` | **YES** | `ATATT3x…` |
 | `GLSYNC_DATABASE__URL` | `database.url` | **YES** | `postgres://…` |
@@ -175,9 +181,10 @@ make test           # go test ./... -race -count=1
 Covered packages (unit / integration tests):
 - `internal/extract` — issue key regex, deduplication, priority rules
 - `internal/workflow` — state classification, transition resolver, due-date strategies
-- `internal/gitlab` — webhook token validation
+- `internal/gitlab` — webhook token validation, emoji event parsing (award, revoke, non-MR ignored)
 - `internal/worker` — executor unit tests (mock Jira client): all job types, unconfigured state skip, error propagation
-- `internal/server` — webhook handler integration tests (httptest): auth, idempotency, filtering, happy path
+- `internal/server` — webhook handler integration tests (httptest): auth, idempotency, filtering, emoji handling, happy path
+- `internal/config` — config loading, validation, defaults
 
 Known gaps (not yet tested):
 - `internal/store` — requires a live or Dockerised PostgreSQL instance; use `testcontainers-go` or `pgxmock`
@@ -224,5 +231,8 @@ Before exposing to the internet:
 
 | Date | Change |
 |---|---|
+| 2026-04-16 | Emoji award webhook: parse emoji events, thumbsup triggers done without merge-to-master; removed emoji threshold/counter; added `integration/gitlab` API client |
+| 2026-04-16 | Removed all sub-module CLAUDE.md files; updated root CLAUDE.md to reflect current state |
+| 2026-04-16 | Added Slidev presentation in `slides/` |
 | 2026-04-12 | Production hardening: config validation, admin bearer auth, executor empty-ID guard, executor & webhook handler tests |
 | 2026-04-08 | Initial CLAUDE.md generated by architecture scan |

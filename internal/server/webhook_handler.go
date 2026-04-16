@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/extract"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/gitlab"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
 	"gitlab.surya-am.com/sam/risk/glsync/internal/worker"
@@ -100,7 +99,7 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 7. Extract issue keys (branch → title → commit messages)
-	event.IssueKeys = extract.IssueKeysFromEvent(
+	event.IssueKeys = gitlab.IssueKeysFromEvent(
 		h.workflow.ProjectKey, event.SourceBranch, event.MRTitle, event.CommitMessages,
 	)
 

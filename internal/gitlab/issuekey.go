@@ -1,4 +1,4 @@
-package extract
+package gitlab
 
 import (
 	"regexp"
