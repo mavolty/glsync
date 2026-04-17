@@ -1,0 +1,77 @@
+# Codemap Update Report
+Updated: 2026-04-16
+Reason: Post-refactor update -- 14 packages reduced to 8
+
+## Files Updated
+- docs/CODEMAPS/architecture.md
+- docs/CODEMAPS/backend.md
+- docs/CODEMAPS/data.md
+- docs/CODEMAPS/dependencies.md
+
+## Source Files Read This Session
+- internal/domain/domain.go
+- internal/config/config.go
+- internal/workflow/rules.go
+- internal/workflow/transition.go
+- internal/server/server.go
+- internal/server/webhook_handler.go
+- internal/worker/processor.go
+- internal/worker/executor.go
+- internal/worker/reconciler.go
+- internal/store/job_repo.go
+- internal/integration/jira/client.go
+- go.mod
+- migrations/001_create_events.up.sql through 006_add_emoji_award_event_type.up.sql
+
+## Structural Changes Reflected
+
+### Packages removed (6 deleted)
+- internal/extract              -> merged into internal/gitlab/issuekey.go
+- internal/reconcile            -> merged into internal/worker/reconciler.go
+- internal/integration/gitlab   -> deleted (emoji counter removed; parse from webhook payload)
+- internal/integration/larkbase -> deleted (stub removed)
+- internal/integration/feishu   -> deleted (stub removed)
+- domain split files            -> consolidated into internal/domain/domain.go
+
+### Packages after refactor (8 total)
+- internal/config
+- internal/domain
+- internal/gitlab        (absorbs former internal/extract)
+- internal/workflow
+- internal/store
+- internal/server
+- internal/worker        (absorbs former internal/reconcile)
+- internal/integration/jira
+
+## Key Corrections vs Previous Codemaps
+
+architecture.md:
+- Removed all references to larkbase_sync and feishu_notify job types
+- Removed mention of internal/reconcile as a separate package
+- Removed mention of internal/extract as a separate package
+- Updated package map to 8-package structure
+- Corrected: MR merged to master is now IGNORED (not "done");
+  done is triggered only by emoji award (thumbsup)
+- Added accurate push-to-develop -> rfqa and push-to-master -> done
+  paths from classifyPush in workflow/rules.go
+
+backend.md:
+- Removed extract.IssueKeysFromEvent reference; now gitlab.IssueKeysFromEvent
+- Removed reconcile.Reconciler reference; now worker.Reconciler
+- Corrected handleEmojiAward as a sub-path inside handleGitLab, not a route
+- Accurate interface method list verified against actual source
+
+data.md:
+- Corrected audit_logs.detail column type: JSONB (previously listed as TEXT)
+- No schema changes; all 6 migrations correctly reflected
+- Improved job lifecycle diagram to show reconciler reset path explicitly
+
+dependencies.md:
+- Removed koanf (not a dependency; config uses yaml.v3 + os.Getenv directly)
+- Removed golang-migrate (CLI tool only; not a Go module dependency)
+- Added correct versions from go.mod for all direct dependencies
+- Added "Removed Integrations" table listing all 5 deleted packages
+- Corrected: no outbound GitLab API calls remain after refactor
+
+## Staleness Warnings
+- None. All codemaps generated from source files read in this session.
