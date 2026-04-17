@@ -47,17 +47,12 @@ graph TD
     C --> D["config"]
     C --> E["domain"]
     C --> F["gitlab"]
-    C --> G["extract"]
     C --> H["workflow"]
     C --> I["store"]
     C --> J["server"]
     C --> K["worker"]
-    C --> L["reconcile"]
     C --> M["integration"]
     M --> N["jira"]
-    M --> O["gitlab"]
-    M --> P["larkbase"]
-    M --> Q["feishu"]
     A --> R["migrations"]
 ```
 
@@ -68,19 +63,14 @@ graph TD
 | Path | Responsibility |
 |------|---------------|
 | `cmd/glsync` | Binary entry point — wires all components and starts the server |
-| `internal/config` | Layered config loader (YAML + env vars via koanf) |
+| `internal/config` | Layered config loader (YAML + env var overrides); `Validate()` fails fast on missing required fields |
 | `internal/domain` | Pure value types: `NormalizedEvent`, `Job`, `AuditEntry`, `WorkflowState` |
-| `internal/gitlab` | Webhook token validation, payload parsing (push / MR / emoji), idempotency key construction |
-| `internal/extract` | Regex-based Jira issue key extractor from branch names and MR titles |
+| `internal/gitlab` | Webhook token validation, payload parsing (push / MR / emoji), issue key extraction from branch/title/commits |
 | `internal/workflow` | Classify event → target state; resolve state → Jira transition ID; calculate due dates |
 | `internal/store` | pgx/v5 repository implementations for events, jobs, and audit logs |
 | `internal/server` | chi HTTP router, webhook handler, health/readiness, admin list endpoints |
-| `internal/worker` | Concurrent job processor (poll + semaphore), executor that calls Jira |
-| `internal/reconcile` | Background loop that resets stuck `running` jobs back to `pending` |
-| `internal/integration/jira` | Jira REST API v2 client: `TransitionIssue`, `GetStoryPoints`, etc. |
-| `internal/integration/gitlab` | GitLab REST API v4 client: `CountAwardEmoji` (optional, not used in current emoji flow) |
-| `internal/integration/larkbase` | Stub: deployment-record interface + no-op implementation |
-| `internal/integration/feishu` | Stub: group-notification interface + no-op implementation |
+| `internal/worker` | Concurrent job processor (poll + semaphore), executor that calls Jira, reconciler that resets stuck jobs |
+| `internal/integration/jira` | Jira REST API v2 client: `TransitionIssue`, `TransitionIssueWithFields`, `GetStoryPoints`, etc. |
 | `migrations` | golang-migrate SQL files for `events`, `jobs`, `audit_logs` tables |
 
 ---
@@ -179,17 +169,14 @@ make test           # go test ./... -race -count=1
 ```
 
 Covered packages (unit / integration tests):
-- `internal/extract` — issue key regex, deduplication, priority rules
+- `internal/gitlab` — webhook token validation, issue key extraction (regex, deduplication, 3-level fallback), emoji event parsing (award, revoke, non-MR ignored)
 - `internal/workflow` — state classification, transition resolver, due-date strategies
-- `internal/gitlab` — webhook token validation, emoji event parsing (award, revoke, non-MR ignored)
-- `internal/worker` — executor unit tests (mock Jira client): all job types, unconfigured state skip, error propagation
+- `internal/worker` — executor unit tests (mock Jira client): all job types, unconfigured state skip, error propagation; processor (`NewJob`, `BackoffForAttempt`, cap); reconciler lifecycle (calls `ResetStuck`, tolerates errors, writes audit entries)
 - `internal/server` — webhook handler integration tests (httptest): auth, idempotency, filtering, emoji handling, happy path
 - `internal/config` — config loading, validation, defaults
 
 Known gaps (not yet tested):
 - `internal/store` — requires a live or Dockerised PostgreSQL instance; use `testcontainers-go` or `pgxmock`
-- `internal/worker/processor.go` — processor loop lifecycle (poll, semaphore, backoff)
-- `internal/reconcile` — no tests
 
 ---
 
@@ -209,7 +196,6 @@ Known gaps (not yet tested):
 
 - The domain model (`internal/domain`) is the authoritative source of type names — always check it before generating new types.
 - Jira transition IDs are environment-specific integers stored in config; do not hard-code them.
-- The `larkbase` and `feishu` packages are intentional stubs — do not implement them without a separate feature branch.
 - When adding a new event type, update: `domain/event.go` → `gitlab/parser.go` → `workflow/rules.go` → tests.
 - The `Dequeue` query uses `SELECT FOR UPDATE SKIP LOCKED` — do not add locks elsewhere in the job lifecycle.
 
@@ -231,6 +217,7 @@ Before exposing to the internet:
 
 | Date | Change |
 |---|---|
+| 2026-04-17 | Simplified from 14 → 8 packages: merged `internal/extract` into `internal/gitlab/issuekey.go`; merged `internal/reconcile` into `internal/worker/reconciler.go`; removed `integration/gitlab`, `integration/larkbase`, `integration/feishu`; added reconciler and processor tests; updated CLAUDE.md and docs/CONTRIBUTING.md |
 | 2026-04-16 | Emoji award webhook: parse emoji events, thumbsup triggers done without merge-to-master; removed emoji threshold/counter; added `integration/gitlab` API client |
 | 2026-04-16 | Removed all sub-module CLAUDE.md files; updated root CLAUDE.md to reflect current state |
 | 2026-04-16 | Added Slidev presentation in `slides/` |
