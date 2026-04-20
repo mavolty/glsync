@@ -13,6 +13,7 @@ import (
 	"github.com/mavolty/glsync/internal/domain"
 	"github.com/mavolty/glsync/internal/integration/jira"
 	"github.com/mavolty/glsync/internal/store"
+	"github.com/mavolty/glsync/plugin"
 )
 
 const (
@@ -88,6 +89,9 @@ func (p *Processor) process(ctx context.Context, job domain.Job) {
 	log := p.logger.With("job_id", job.ID, "issue_key", job.IssueKey, "type", job.Type)
 
 	err := p.exec.Execute(ctx, job)
+	for _, jh := range plugin.JobHandlers() {
+		jh.HandleJobResult(ctx, job, err)
+	}
 	if err == nil {
 		if markErr := p.jobs.MarkCompleted(ctx, job.ID); markErr != nil {
 			log.Error("mark job completed", "error", markErr)

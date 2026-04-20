@@ -14,6 +14,7 @@ import (
 	"github.com/mavolty/glsync/internal/store"
 	"github.com/mavolty/glsync/internal/worker"
 	"github.com/mavolty/glsync/internal/workflow"
+	"github.com/mavolty/glsync/plugin"
 )
 
 const maxWebhookBodyBytes = 5 * 1024 * 1024 // 5 MB
@@ -140,7 +141,14 @@ func (h *webhookHandler) handleGitLab(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Debug("event classified and persisted", "event_id", event.ID, "target_state", targetState)
 
-	// 10. Enqueue one job per issue key
+	// 10. Call registered plugin event handlers (fire-and-forget on error)
+	for _, ph := range plugin.EventHandlers() {
+		if err := ph.HandleEvent(r.Context(), event); err != nil {
+			h.logger.Warn("plugin event handler error", "error", err)
+		}
+	}
+
+	// 11. Enqueue one job per issue key
 	for _, key := range event.IssueKeys {
 		job := worker.NewJob(event.ID, key, targetState, h.maxAttempts)
 		if err := h.jobs.Enqueue(r.Context(), job); err != nil {
@@ -188,6 +196,12 @@ func (h *webhookHandler) handleEmojiAward(w http.ResponseWriter, r *http.Request
 		h.logger.Error("insert emoji event", "error", err)
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
+	}
+
+	for _, ph := range plugin.EventHandlers() {
+		if err := ph.HandleEvent(r.Context(), event); err != nil {
+			h.logger.Warn("plugin event handler error", "error", err)
+		}
 	}
 
 	for _, key := range event.IssueKeys {
