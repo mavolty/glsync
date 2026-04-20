@@ -3,7 +3,7 @@ package workflow
 import (
 	"fmt"
 
-	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
+	"github.com/mavolty/glsync/internal/domain"
 )
 
 // Resolver maps WorkflowState values to Jira transition IDs using a config-driven map.

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
+	"github.com/mavolty/glsync/internal/domain"
 )
 
 const zeroSHA = "0000000000000000000000000000000000000000"

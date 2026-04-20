@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/worker"
+	"github.com/mavolty/glsync/internal/domain"
+	"github.com/mavolty/glsync/internal/worker"
 )
 
 // noopJobRepo is a no-op implementation of store.JobRepository for reconciler tests.

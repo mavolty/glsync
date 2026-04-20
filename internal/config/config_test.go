@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
+	"github.com/mavolty/glsync/internal/config"
 )
 
 func writeYAML(t *testing.T, content string) string {

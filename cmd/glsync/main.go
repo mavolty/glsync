@@ -11,12 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/integration/jira"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/server"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/worker"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/workflow"
+	"github.com/mavolty/glsync/internal/config"
+	"github.com/mavolty/glsync/internal/integration/jira"
+	"github.com/mavolty/glsync/internal/server"
+	"github.com/mavolty/glsync/internal/store"
+	"github.com/mavolty/glsync/internal/worker"
+	"github.com/mavolty/glsync/internal/workflow"
 )
 
 func main() {

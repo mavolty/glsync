@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/gitlab"
+	"github.com/mavolty/glsync/internal/gitlab"
 )
 
 func TestValidateToken(t *testing.T) {

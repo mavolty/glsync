@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
+	"github.com/mavolty/glsync/internal/domain"
 )
 
 type EventRepository interface {

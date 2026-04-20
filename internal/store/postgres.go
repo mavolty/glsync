@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
+	"github.com/mavolty/glsync/internal/config"
 )
 
 // NewPool creates a pgxpool connection pool using the provided database config.

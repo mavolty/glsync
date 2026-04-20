@@ -12,11 +12,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/server"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/workflow"
+	"github.com/mavolty/glsync/internal/config"
+	"github.com/mavolty/glsync/internal/domain"
+	"github.com/mavolty/glsync/internal/server"
+	"github.com/mavolty/glsync/internal/store"
+	"github.com/mavolty/glsync/internal/workflow"
 )
 
 // --- mock repositories ---

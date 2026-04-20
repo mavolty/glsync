@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/workflow"
+	"github.com/mavolty/glsync/internal/domain"
+	"github.com/mavolty/glsync/internal/workflow"
 )
 
 var testCfg = workflow.RuleConfig{

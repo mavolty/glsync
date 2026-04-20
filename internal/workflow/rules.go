@@ -1,7 +1,7 @@
 package workflow
 
 import (
-	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
+	"github.com/mavolty/glsync/internal/domain"
 )
 
 // RuleConfig holds the branch names used to determine target states.

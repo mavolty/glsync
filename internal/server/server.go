@@ -11,9 +11,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/workflow"
+	"github.com/mavolty/glsync/internal/config"
+	"github.com/mavolty/glsync/internal/store"
+	"github.com/mavolty/glsync/internal/workflow"
 )
 
 // Server wraps the HTTP server and its dependencies.

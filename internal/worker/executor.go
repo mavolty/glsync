@@ -6,10 +6,10 @@ import (
 	"log/slog"
 	"time"
 
-	"gitlab.surya-am.com/sam/risk/glsync/internal/config"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/integration/jira"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/workflow"
+	"github.com/mavolty/glsync/internal/config"
+	"github.com/mavolty/glsync/internal/domain"
+	"github.com/mavolty/glsync/internal/integration/jira"
+	"github.com/mavolty/glsync/internal/workflow"
 )
 
 // Executor dispatches a job to the appropriate integration client.

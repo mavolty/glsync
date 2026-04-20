@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/domain"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/integration/jira"
-	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
+	"github.com/mavolty/glsync/internal/domain"
+	"github.com/mavolty/glsync/internal/integration/jira"
+	"github.com/mavolty/glsync/internal/store"
 )
 
 const (

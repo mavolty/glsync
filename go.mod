@@ -1,4 +1,4 @@
-module gitlab.surya-am.com/sam/risk/glsync
+module github.com/mavolty/glsync
 
 go 1.25.0
 

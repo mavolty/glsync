@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"gitlab.surya-am.com/sam/risk/glsync/internal/store"
+	"github.com/mavolty/glsync/internal/store"
 )
 
 type adminHandler struct {
