@@ -23,9 +23,7 @@ GitLab  ──POST──►  /api/v1/webhooks/gitlab
          dequeue (SELECT FOR UPDATE SKIP LOCKED)
               │
          [worker / Executor]
-         ├─ jira_transition  ──► Jira REST API v2
-         ├─ larkbase_sync    (stub, no-op)
-         └─ feishu_notify    (stub, no-op)
+         └─ jira_transition  ──► Jira REST API v2
               │
          [reconcile / Reconciler]
          resets stuck "running" jobs every 15 min
@@ -182,7 +180,7 @@ Known gaps (not yet tested):
 
 ## Coding Standards
 
-- Language: Go 1.25. Module: `gitlab.surya-am.com/sam/risk/glsync`.
+- Language: Go 1.25. Module: `github.com/mavolty/glsync`.
 - Formatter: `gofmt` / `goimports` (mandatory).
 - Linter: `golangci-lint` (`make lint`).
 - Error wrapping: `fmt.Errorf("context: %w", err)` at every boundary.

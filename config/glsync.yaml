@@ -32,26 +32,32 @@ jira:
   timeout: 15s
 
 workflow:
-  project_key: "RIS"
+  # project_key: Your Jira project prefix (e.g. "PROJ", "ENG", "DEV").
+  # Issue keys like PROJ-123 are extracted from branch names, MR titles, and commit messages.
+  project_key: "YOUR_PROJECT"
   develop_branch: "develop"
   master_branch: "master"
   transitions:
-    code_review: "14" # Start → Code Review
-    rfqa: "15" # Code Review → RFQA
-    done: "17" # RFQA → Done
+    # Jira transition IDs are project-specific integers.
+    # Discover yours: curl -u EMAIL:TOKEN https://YOUR_JIRA/rest/api/2/issue/TICKET-1/transitions
+    code_review: "14" # example → Code Review
+    rfqa: "15"        # example → RFQA / Staging
+    done: "17"        # example → Done
 
-  # Emoji-based done trigger: requires N thumbsup on a merged MR targeting master
+  # Emoji-based done trigger: any thumbsup emoji on a merged MR triggers → Done
   done_emoji: "thumbsup"
 
   in_progress:
-    transition_id: "2" # To Do -> In Progress
-    # "sprint_end": due date = next sprint end day (e.g. Tuesday)
+    transition_id: "2" # example: To Do → In Progress
+    # "sprint_end": due date = next sprint end weekday
     # "story_points": due date = today + story_points days
     due_date_strategy: "sprint_end"
     sprint_end_weekday: "tuesday"
-    start_date_field: "customfield_10040" # Start date
-    due_date_field: "duedate" # Due date
-    story_points_field: "customfield_10027" # Story Points
+    # Jira custom field IDs vary per instance — find yours via:
+    # curl -u EMAIL:TOKEN https://YOUR_JIRA/rest/api/2/issue/TICKET-1?expand=names
+    start_date_field: "customfield_10040"   # example: Start date field
+    due_date_field: "duedate"               # standard Jira due date field
+    story_points_field: "customfield_10027" # example: Story Points field
 
 worker:
   concurrency: 1

@@ -13,7 +13,7 @@
 
 ```bash
 # 1. Clone the repo
-git clone https://gitlab.surya-am.com/sam/risk/glsync.git
+git clone https://github.com/mavolty/glsync.git
 cd glsync
 
 # 2. Start a local PostgreSQL 16 instance (Docker required)
@@ -96,7 +96,7 @@ Tests are table-driven and use `testify`. They live alongside source files in `_
 ## Code Standards
 
 - Format with `gofmt` / `goimports` before committing.
-- Run `make lint` and address any findings before opening an MR.
+- Run `make lint` and address any findings before opening a PR.
 - Wrap errors at every boundary: `fmt.Errorf("context: %w", err)`.
 - Define interfaces at the call site, not the implementation site.
 - Do not hard-code secrets; load from environment only.
@@ -113,7 +113,7 @@ Types: `feat`, `fix`, `refactor`, `chore`, `perf`, `ci`, `docs`, `test`
 
 When a new GitLab event type needs to be handled, update these files in order:
 
-1. `internal/domain/event.go` — add the new `EventType` constant
+1. `internal/domain/domain.go` — add the new `EventType` constant
 2. `internal/gitlab/parser.go` — parse the raw payload into `NormalizedEvent`
 3. `internal/workflow/rules.go` — map the event to a `WorkflowState`
 4. Tests for all three layers

@@ -4,7 +4,7 @@
 
 **Last Updated:** 2026-04-16
 **Entry Point:** `cmd/glsync/main.go`
-**Module:** `gitlab.surya-am.com/sam/risk/glsync`
+**Module:** `github.com/mavolty/glsync`
 
 ## Package Map
 

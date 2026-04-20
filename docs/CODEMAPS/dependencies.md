@@ -17,7 +17,7 @@ Emoji events are now parsed directly from the webhook payload — no outbound Gi
 
 ## Go Module Dependencies (go.mod)
 
-Module: `gitlab.surya-am.com/sam/risk/glsync`
+Module: `github.com/mavolty/glsync`
 Go version: `1.25`
 
 ### Direct
