@@ -13,10 +13,12 @@ import (
 
 	"github.com/mavolty/glsync/internal/config"
 	"github.com/mavolty/glsync/internal/integration/jira"
+	"github.com/mavolty/glsync/internal/openclaw"
 	"github.com/mavolty/glsync/internal/server"
 	"github.com/mavolty/glsync/internal/store"
 	"github.com/mavolty/glsync/internal/worker"
 	"github.com/mavolty/glsync/internal/workflow"
+	"github.com/mavolty/glsync/plugin"
 )
 
 func main() {
@@ -40,6 +42,18 @@ func main() {
 	if err := cfg.Validate(); err != nil {
 		logger.Error("invalid config", "error", err)
 		os.Exit(1)
+	}
+
+	// Register OpenClaw event notifier if configured (optional)
+	if cfg.OpenClaw.HookURL != "" {
+		notifier := openclaw.NewNotifier(openclaw.Config{
+			HookURL:   cfg.OpenClaw.HookURL,
+			HookToken: cfg.OpenClaw.HookToken,
+			DryRun:    cfg.OpenClaw.DryRun,
+			Timeout:   time.Duration(cfg.OpenClaw.Timeout),
+		}, logger.With("component", "openclaw"))
+		plugin.RegisterEventHandler(notifier)
+		logger.Info("openclaw notifier registered", "dry_run", cfg.OpenClaw.DryRun)
 	}
 
 	// Root context cancelled on OS signal

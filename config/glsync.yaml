@@ -68,3 +68,16 @@ reconcile:
   enabled: true
   interval: 15m
   stuck_job_timeout: 5m
+
+openclaw:
+  # hook_url: OpenClaw /hooks/agent endpoint. Leave empty to disable dispatch.
+  # Set via GLSYNC_OPENCLAW__HOOK_URL env var.
+  # Example: http://127.0.0.1:18789/hooks/agent
+  hook_url: ""
+  # hook_token: Bearer token for the hooks endpoint.
+  # Set via GLSYNC_OPENCLAW__HOOK_TOKEN env var.
+  hook_token: ""
+  # dry_run: when true, logs the intended dispatch but makes no HTTP call.
+  # Set via GLSYNC_OPENCLAW__DRY_RUN=true env var.
+  dry_run: false
+  timeout: 10s

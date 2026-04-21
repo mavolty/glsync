@@ -30,6 +30,16 @@ type Config struct {
 	Workflow  WorkflowConfig  `yaml:"workflow"`
 	Worker    WorkerConfig    `yaml:"worker"`
 	Reconcile ReconcileConfig `yaml:"reconcile"`
+	OpenClaw  OpenClawConfig  `yaml:"openclaw"`
+}
+
+// OpenClawConfig holds optional OpenClaw/Rina hook dispatch settings.
+// When HookURL is empty the notifier is not registered and no dispatch occurs.
+type OpenClawConfig struct {
+	HookURL   string   `yaml:"hook_url"`
+	HookToken string   `yaml:"hook_token"`
+	DryRun    bool     `yaml:"dry_run"`
+	Timeout   Duration `yaml:"timeout"`
 }
 
 type ServerConfig struct {
@@ -158,6 +168,15 @@ func applyEnv(cfg *Config) {
 	if v := os.Getenv("GLSYNC_DATABASE__URL"); v != "" {
 		cfg.Database.URL = v
 	}
+	if v := os.Getenv("GLSYNC_OPENCLAW__HOOK_URL"); v != "" {
+		cfg.OpenClaw.HookURL = v
+	}
+	if v := os.Getenv("GLSYNC_OPENCLAW__HOOK_TOKEN"); v != "" {
+		cfg.OpenClaw.HookToken = v
+	}
+	if v := os.Getenv("GLSYNC_OPENCLAW__DRY_RUN"); v == "true" {
+		cfg.OpenClaw.DryRun = true
+	}
 }
 
 func defaults() *Config {
@@ -198,6 +217,9 @@ func defaults() *Config {
 			Enabled:         true,
 			Interval:        Duration(15 * time.Minute),
 			StuckJobTimeout: Duration(5 * time.Minute),
+		},
+		OpenClaw: OpenClawConfig{
+			Timeout: Duration(10 * time.Second),
 		},
 	}
 }

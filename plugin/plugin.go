@@ -16,8 +16,8 @@ import (
 )
 
 // EventHandler is called after a webhook event is parsed and persisted,
-// before jobs are enqueued. A non-nil error aborts job enqueuing for that
-// event. Implementations must be safe for concurrent use.
+// before jobs are enqueued. A non-nil error is logged as a warning and does
+// NOT abort job enqueuing. Implementations must be safe for concurrent use.
 type EventHandler interface {
 	HandleEvent(ctx context.Context, event domain.NormalizedEvent) error
 }
